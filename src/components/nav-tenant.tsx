@@ -90,7 +90,7 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-slate-900 border-t border-slate-700 z-50">
-        <div className="flex justify-around">
+        <div className="flex overflow-x-auto scrollbar-hide">
           {navItems.map(({ href, label, icon: Icon, exact }) => {
             const active = exact ? pathname === href : pathname.startsWith(href)
             return (
@@ -98,7 +98,7 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
                 key={href}
                 href={href}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 px-2 py-2 text-xs flex-1',
+                  'flex flex-col items-center gap-0.5 px-4 py-2 text-xs shrink-0',
                   active ? 'text-white' : 'text-slate-400'
                 )}
               >
@@ -110,7 +110,7 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
           <Link
             href="/notifications"
             className={cn(
-              'flex flex-col items-center gap-0.5 px-2 py-2 text-xs flex-1 relative',
+              'flex flex-col items-center gap-0.5 px-4 py-2 text-xs shrink-0 relative',
               pathname.startsWith('/notifications') ? 'text-white' : 'text-slate-400'
             )}
           >
@@ -122,10 +122,10 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
               </span>
             )}
           </Link>
-          <form action={signOut} className="flex-1">
+          <form action={signOut} className="shrink-0">
             <button
               type="submit"
-              className="w-full flex flex-col items-center gap-0.5 px-2 py-2 text-xs text-slate-400 hover:text-white"
+              className="flex flex-col items-center gap-0.5 px-4 py-2 text-xs text-slate-400 hover:text-white"
             >
               <LogOut className="h-5 w-5" />
               <span>Sign out</span>
