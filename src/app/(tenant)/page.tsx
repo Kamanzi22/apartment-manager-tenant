@@ -8,10 +8,10 @@ export default async function RentPage() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
     const periodMonth = currentPeriodMonth()
     const demoPaymentHistory = [
-      { id: 'dp-2026-06', period_month: '2026-06', amount: 1200, status: 'confirmed', submitted_at: '2026-06-02T09:00:00Z' },
-      { id: 'dp-2026-05', period_month: '2026-05', amount: 1200, status: 'confirmed', submitted_at: '2026-05-01T09:00:00Z' },
-      { id: 'dp-2026-04', period_month: '2026-04', amount: 1200, status: 'confirmed', submitted_at: '2026-04-02T09:00:00Z' },
-      { id: 'dp-2026-03', period_month: '2026-03', amount: 1200, status: 'confirmed', submitted_at: '2026-03-03T09:00:00Z' },
+      { id: 'dp-2026-06', period_month: '2026-06', amount: 1200, status: 'confirmed', submitted_at: '2026-06-02T09:00:00Z', receipt_file_url: null, landlord_notes: null },
+      { id: 'dp-2026-05', period_month: '2026-05', amount: 1200, status: 'confirmed', submitted_at: '2026-05-01T09:00:00Z', receipt_file_url: null, landlord_notes: null },
+      { id: 'dp-2026-04', period_month: '2026-04', amount: 1200, status: 'confirmed', submitted_at: '2026-04-02T09:00:00Z', receipt_file_url: null, landlord_notes: null },
+      { id: 'dp-2026-03', period_month: '2026-03', amount: 1200, status: 'confirmed', submitted_at: '2026-03-03T09:00:00Z', receipt_file_url: null, landlord_notes: null },
     ]
     const demoCurrentPayment = demoPaymentHistory.find(p => p.period_month === periodMonth) ?? null
     return (
