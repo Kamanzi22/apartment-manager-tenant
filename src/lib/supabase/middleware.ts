@@ -19,18 +19,37 @@ export async function updateSession(request: NextRequest) {
           )
         },
       },
+      // Never let a slow Supabase response hang the middleware (Vercel kills it → 504)
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(5000) }),
+      },
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Supabase unreachable — let the request through; the (tenant) layout re-checks auth
+    return supabaseResponse
+  }
   const { pathname } = request.nextUrl
+
+  // Let auth callback and reset-password through without session checks
+  if (pathname.startsWith('/auth/') || pathname === '/reset-password' || pathname === '/auth/callback') {
+    return supabaseResponse
+  }
 
   if (!user && pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
   if (user && pathname === '/login') {
-    return NextResponse.redirect(new URL('/', request.url))
+    // If a PKCE code is present the user arrived via a password reset email —
+    // send them to the reset form instead of the home page
+    const code = request.nextUrl.searchParams.get('code')
+    return NextResponse.redirect(new URL(code ? '/reset-password' : '/', request.url))
   }
 
   return supabaseResponse

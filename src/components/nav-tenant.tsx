@@ -3,16 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/actions/auth'
-import {
-  Home, CreditCard, Wrench, MessageSquare, DoorOpen, FileText, Bell, LogOut,
-} from 'lucide-react'
+import { Home, CreditCard, Wrench, MessageSquare, LogOut } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'Rent', icon: CreditCard, exact: true },
   { href: '/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
-  { href: '/move-out', label: 'Move-out', icon: DoorOpen },
-  { href: '/lease', label: 'Lease', icon: FileText },
 ]
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -25,7 +21,7 @@ interface Props {
   fullName: string
 }
 
-export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
+export function NavTenant({ unreadCount: _unreadCount, unitLabel, fullName }: Props) {
   const pathname = usePathname()
 
   return (
@@ -58,21 +54,6 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
           })}
         </nav>
         <div className="px-2 pb-4 border-t border-slate-700 pt-3 space-y-0.5">
-          <Link
-            href="/notifications"
-            className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-              pathname.startsWith('/notifications') ? 'bg-slate-700 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            )}
-          >
-            <Bell className="h-4 w-4 shrink-0" />
-            Notifications
-            {unreadCount > 0 && (
-              <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </Link>
           <form action={signOut}>
             <button
               type="submit"
@@ -90,7 +71,7 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-slate-900 border-t border-slate-700 z-50">
-        <div className="flex overflow-x-auto scrollbar-hide">
+        <div className="flex">
           {navItems.map(({ href, label, icon: Icon, exact }) => {
             const active = exact ? pathname === href : pathname.startsWith(href)
             return (
@@ -98,7 +79,7 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
                 key={href}
                 href={href}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 px-4 py-2 text-xs shrink-0',
+                  'flex-1 flex flex-col items-center gap-0.5 py-2 text-xs',
                   active ? 'text-white' : 'text-slate-400'
                 )}
               >
@@ -107,25 +88,10 @@ export function NavTenant({ unreadCount, unitLabel, fullName }: Props) {
               </Link>
             )
           })}
-          <Link
-            href="/notifications"
-            className={cn(
-              'flex flex-col items-center gap-0.5 px-4 py-2 text-xs shrink-0 relative',
-              pathname.startsWith('/notifications') ? 'text-white' : 'text-slate-400'
-            )}
-          >
-            <Bell className="h-5 w-5" />
-            <span>Alerts</span>
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-2 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </Link>
-          <form action={signOut} className="shrink-0">
+          <form action={signOut} className="flex-1">
             <button
               type="submit"
-              className="flex flex-col items-center gap-0.5 px-4 py-2 text-xs text-slate-400 hover:text-white"
+              className="w-full flex flex-col items-center gap-0.5 py-2 text-xs text-slate-400 hover:text-white"
             >
               <LogOut className="h-5 w-5" />
               <span>Sign out</span>

@@ -35,7 +35,9 @@ export default async function MessagesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: landlord } = await supabase.from('profiles').select('id, full_name').eq('role', 'landlord').single()
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const admin = await createAdminClient()
+  const { data: landlord } = await admin.from('profiles').select('id, full_name').eq('role', 'landlord').single()
 
   const { data: messages } = await supabase
     .from('messages')

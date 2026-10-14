@@ -11,6 +11,7 @@ export function MaintenanceForm() {
   const [category, setCategory] = useState<MaintenanceCategory | ''>('')
   const [urgency, setUrgency] = useState<Urgency>('medium')
   const [description, setDescription] = useState('')
+  const [otherText, setOtherText] = useState('')
   const [photos, setPhotos] = useState<File[]>([])
   const [pending, startTransition] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -24,10 +25,11 @@ export function MaintenanceForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!category || !description.trim()) { toast.error('Please fill in all required fields'); return }
+    if (category === 'other' && !otherText.trim()) { toast.error('Please specify the maintenance type'); return }
     const fd = new FormData()
     fd.append('category', category)
     fd.append('urgency', urgency)
-    fd.append('description', description)
+    fd.append('description', category === 'other' ? `${otherText.trim()}: ${description}` : description)
     photos.forEach(p => fd.append('photos', p))
     startTransition(async () => {
       const result = await submitMaintenanceRequest(fd)
@@ -38,6 +40,7 @@ export function MaintenanceForm() {
         setCategory('')
         setUrgency('medium')
         setDescription('')
+        setOtherText('')
         setPhotos([])
       }
     })
@@ -96,6 +99,20 @@ export function MaintenanceForm() {
           <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             Safety issue — flagged as high urgency by default
+          </div>
+        )}
+
+        {category === 'other' && (
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-700">Specify maintenance type *</label>
+            <input
+              type="text"
+              value={otherText}
+              onChange={e => setOtherText(e.target.value)}
+              required
+              placeholder="e.g. Door lock, Painting…"
+              className="w-full border rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
           </div>
         )}
 
