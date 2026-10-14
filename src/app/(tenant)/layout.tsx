@@ -24,7 +24,9 @@ export default async function TenantLayout({ children }: { children: React.React
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'tenant') redirect('/login')
+  // Signed in but not a tenant (e.g. the landlord account): end the session first, otherwise
+  // the middleware sends a logged-in user from /login straight back to / and it loops
+  if (!profile || profile.role !== 'tenant') redirect('/auth/signout?reason=not_tenant')
 
   const { count: unreadCount } = await supabase
     .from('notifications')

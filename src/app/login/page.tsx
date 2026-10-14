@@ -24,8 +24,10 @@ export default function LoginPage() {
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') return
     const code = new URLSearchParams(window.location.search).get('code')
-    const linkError = new URLSearchParams(window.location.search).get('error')
-    if (linkError) { setError('This reset link has expired. Please request a new one.'); return }
+    const params = new URLSearchParams(window.location.search)
+    const linkError = params.get('error')
+    if (linkError === 'not_tenant') { setError('This account is not a tenant account. Use the manager app to sign in.'); return }
+    if (linkError) { setError('This reset link is invalid or has expired. Please request a new one.'); return }
     if (!code) return
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,26 +59,34 @@ export default function LoginPage() {
       return
     }
 
-    const supabase = createClient()
-    const isPhone = !identifier.includes('@')
+    try {
+      const supabase = createClient()
+      const trimmed = identifier.trim()
+      const isPhone = !trimmed.includes('@')
 
-    let email = identifier
-    if (isPhone) {
-      const resolved = await lookupEmailByPhone(identifier)
-      if (!resolved) {
-        setError('No account found with this phone number.')
-        setLoading(false)
-        return
+      let email = trimmed
+      if (isPhone) {
+        const resolved = await lookupEmailByPhone(trimmed)
+        if (!resolved) {
+          setError('No account found with this phone number.')
+          setLoading(false)
+          return
+        }
+        email = resolved
       }
-      email = resolved
-    }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError('Invalid credentials. Check your email/phone and password.')
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError(error.status === 400
+          ? 'Invalid credentials. Check your email/phone and password.'
+          : 'Could not reach the server. Check your connection and try again.')
+        setLoading(false)
+      } else {
+        window.location.replace('/')
+      }
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
       setLoading(false)
-    } else {
-      window.location.replace('/')
     }
   }
 
@@ -96,7 +106,14 @@ export default function LoginPage() {
     fd.set('full_name', fullName)
     fd.set('phone', phone)
 
-    const result = await registerTenant(fd)
+    let result: Awaited<ReturnType<typeof registerTenant>>
+    try {
+      result = await registerTenant(fd)
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
+      setLoading(false)
+      return
+    }
     if (result.error) {
       setError(result.error)
       setLoading(false)
@@ -128,11 +145,12 @@ export default function LoginPage() {
       return
     }
 
-    const result = await sendPasswordResetEmail(forgotEmail)
-    if (result.error) {
-      setError(result.error)
-    } else {
-      setResetSent(true)
+    try {
+      const result = await sendPasswordResetEmail(forgotEmail)
+      if (result.error) setError(result.error)
+      else setResetSent(true)
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
     }
     setLoading(false)
   }

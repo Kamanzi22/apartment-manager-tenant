@@ -29,7 +29,9 @@ export default function ResetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
 
     if (error) {
-      setError(error.message)
+      setError(error.name === 'AuthSessionMissingError'
+        ? 'Your reset link has expired. Go back to sign in and request a new one.'
+        : error.message)
       setLoading(false)
     } else {
       window.location.replace('/')

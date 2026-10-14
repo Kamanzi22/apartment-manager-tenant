@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 
 export async function signOut() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
@@ -60,15 +61,21 @@ export async function sendPasswordResetEmail(email: string): Promise<{ error?: s
 
   const admin = await createAdminClient()
 
-  // Admin generateLink always respects the redirectTo — bypasses the Supabase Site URL restriction
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email: email.trim(),
-    options: { redirectTo: 'https://apartment-manager-tenant.onrender.com/auth/callback' },
   })
 
   // Generic success to avoid revealing whether the email is registered
-  if (error || !data?.properties?.action_link) return {}
+  if (error || !data?.properties?.hashed_token) return {}
+
+  // Link straight to our own /auth/confirm, which verifies the token server-side and sets the
+  // session cookies. Supabase's action_link instead returns tokens in the URL hash (implicit
+  // flow), which the PKCE browser client rejects — every reset showed "link expired".
+  const h = await headers()
+  const host = h.get('x-forwarded-host') ?? h.get('host')
+  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https')
+  const resetLink = `${proto}://${host}/auth/confirm?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=recovery&next=/reset-password`
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -87,7 +94,7 @@ export async function sendPasswordResetEmail(email: string): Promise<{ error?: s
             Click the button below to set a new password for your Tenant Portal account.
             This link expires in 24&nbsp;hours.
           </p>
-          <a href="${data.properties.action_link}"
+          <a href="${resetLink}"
              style="display:inline-block;background:#1e293b;color:#fff;text-decoration:none;
                     padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
             Reset Password

@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { isAuthRetryableFetchError } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from './database.types'
 
@@ -28,10 +29,12 @@ export async function updateSession(request: NextRequest) {
 
   let user = null
   try {
-    const { data } = await supabase.auth.getUser()
+    const { data, error } = await supabase.auth.getUser()
+    // Supabase slow/unreachable (timeout, 5xx) — don't treat that as "logged out" and bounce
+    // the user to /login; let the request through and the (tenant) layout re-checks auth
+    if (error && isAuthRetryableFetchError(error)) return supabaseResponse
     user = data.user
   } catch {
-    // Supabase unreachable — let the request through; the (tenant) layout re-checks auth
     return supabaseResponse
   }
   const { pathname } = request.nextUrl
