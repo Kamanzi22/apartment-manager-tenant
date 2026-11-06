@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { submitPayment } from '@/app/actions/payments'
 import { Upload, CheckCircle2, Clock, XCircle, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatRWF } from '@/lib/currency'
 
 interface Payment {
   id: string
@@ -57,7 +58,7 @@ export function RentCard({ leaseId, monthlyRent, periodMonth, periodLabel, dueDa
       {/* Header */}
       <div className="bg-slate-900 px-5 py-4 text-white">
         <p className="text-sm text-slate-400">{periodLabel}</p>
-        <p className="text-3xl font-bold mt-1">${monthlyRent.toFixed(2)}</p>
+        <p className="text-3xl font-bold mt-1">{formatRWF(monthlyRent)}</p>
         <p className="text-xs text-slate-400 mt-1">Due {dueDate}</p>
       </div>
 
@@ -85,11 +86,11 @@ export function RentCard({ leaseId, monthlyRent, periodMonth, periodLabel, dueDa
         {(!currentPayment || currentPayment.status === 'rejected') && (
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-slate-700">Amount paid ($)</label>
+              <label className="block text-sm font-medium text-slate-700">Amount paid (RWF)</label>
               <input
                 type="number"
                 min="1"
-                step="0.01"
+                step="1"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 className="w-full border rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500"

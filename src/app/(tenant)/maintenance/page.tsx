@@ -11,13 +11,24 @@ const statusConfig = {
   resolved:     { label: 'Resolved',     cls: 'bg-green-100 text-green-700' },
 }
 
+interface Request {
+  id: string
+  category: string
+  urgency: string
+  status: string
+  description: string
+  landlord_comment: string | null
+  created_at: string
+  updated_at: string
+}
+
 function categoryLabel(value: string) {
   return MAINTENANCE_CATEGORIES.find(c => c.value === value)?.label ?? value
 }
 
 export default async function MaintenancePage() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
-    const demoRequests = [
+    const demoRequests: Request[] = [
       {
         id: 'demo-maint-1',
         category: 'plumbing',
@@ -39,51 +50,7 @@ export default async function MaintenancePage() {
         updated_at: '2026-05-14T11:30:00Z',
       },
     ]
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Maintenance</h1>
-          <p className="text-sm text-slate-500 mt-1">Submit and track repair requests</p>
-        </div>
-        <MaintenanceForm />
-        <div>
-          <h2 className="text-base font-semibold text-slate-800 mb-3">Your Requests</h2>
-          <div className="rounded-xl border bg-white divide-y shadow-sm overflow-hidden">
-            {demoRequests.map(r => {
-              const st = statusConfig[r.status as keyof typeof statusConfig]
-              return (
-                <div key={r.id} className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-slate-900">{categoryLabel(r.category)}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          r.urgency === 'high' ? 'text-red-600' : r.urgency === 'medium' ? 'text-amber-600' : 'text-slate-500'
-                        }`}>
-                          {r.urgency}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-0.5">{r.description}</p>
-                      {r.landlord_comment && (
-                        <p className="text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mt-2">
-                          Landlord: {r.landlord_comment}
-                        </p>
-                      )}
-                      <p className="text-xs text-slate-400 mt-1.5">
-                        {format(new Date(r.created_at), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${st?.cls ?? 'bg-slate-100 text-slate-500'}`}>
-                      {st?.label ?? r.status}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
+    return <MaintenanceView requests={demoRequests} />
   }
 
   const supabase = await createClient()
@@ -96,6 +63,15 @@ export default async function MaintenancePage() {
     .eq('tenant_id', user.id)
     .order('created_at', { ascending: false })
 
+  return <MaintenanceView requests={requests ?? []} />
+}
+
+function MaintenanceView({ requests }: { requests: Request[] }) {
+  const open = requests.filter(r => r.status !== 'resolved')
+  const history = requests
+    .filter(r => r.status === 'resolved')
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+
   return (
     <div className="space-y-6">
       <div>
@@ -105,44 +81,70 @@ export default async function MaintenancePage() {
 
       <MaintenanceForm />
 
-      {requests && requests.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-slate-800 mb-3">Your Requests</h2>
-          <div className="rounded-xl border bg-white divide-y shadow-sm overflow-hidden">
-            {requests.map(r => {
-              const st = statusConfig[r.status as keyof typeof statusConfig]
-              return (
-                <div key={r.id} className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-slate-900">{categoryLabel(r.category)}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          r.urgency === 'high' ? 'text-red-600' : r.urgency === 'medium' ? 'text-amber-600' : 'text-slate-500'
-                        }`}>
-                          {r.urgency}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-0.5">{r.description}</p>
-                      {r.landlord_comment && (
-                        <p className="text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mt-2">
-                          Landlord: {r.landlord_comment}
-                        </p>
-                      )}
-                      <p className="text-xs text-slate-400 mt-1.5">
-                        {format(new Date(r.created_at), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${st?.cls ?? 'bg-slate-100 text-slate-500'}`}>
-                      {st?.label ?? r.status}
-                    </span>
-                  </div>
+      <section>
+        <h2 className="text-base font-semibold text-slate-800 mb-3">
+          Open Requests {open.length > 0 && <span className="text-slate-400 font-normal">({open.length})</span>}
+        </h2>
+        {open.length === 0 ? <EmptyState text="No open requests" /> : <RequestList requests={open} />}
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-slate-800 mb-3">
+          History {history.length > 0 && <span className="text-slate-400 font-normal">({history.length})</span>}
+        </h2>
+        {history.length === 0
+          ? <EmptyState text="No resolved requests yet" />
+          : <RequestList requests={history} showResolved />}
+      </section>
+    </div>
+  )
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border border-dashed bg-white px-4 py-6 text-center text-sm text-slate-400">
+      {text}
+    </div>
+  )
+}
+
+function RequestList({ requests, showResolved = false }: { requests: Request[]; showResolved?: boolean }) {
+  return (
+    <div className="rounded-xl border bg-white divide-y shadow-sm overflow-hidden">
+      {requests.map(r => {
+        const st = statusConfig[r.status as keyof typeof statusConfig]
+        const updated = r.updated_at !== r.created_at
+        return (
+          <div key={r.id} className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm text-slate-900">{categoryLabel(r.category)}</span>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    r.urgency === 'high' ? 'text-red-600' : r.urgency === 'medium' ? 'text-amber-600' : 'text-slate-500'
+                  }`}>
+                    {r.urgency}
+                  </span>
                 </div>
-              )
-            })}
+                <p className="text-sm text-slate-600 mt-0.5">{r.description}</p>
+                {r.landlord_comment && (
+                  <p className="text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mt-2">
+                    Landlord: {r.landlord_comment}
+                  </p>
+                )}
+                <p className="text-xs text-slate-400 mt-1.5">
+                  Submitted {format(new Date(r.created_at), 'MMM d, yyyy')}
+                  {showResolved && ` · Resolved ${format(new Date(r.updated_at), 'MMM d, yyyy')}`}
+                  {!showResolved && updated && ` · Updated ${format(new Date(r.updated_at), 'MMM d, yyyy')}`}
+                </p>
+              </div>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${st?.cls ?? 'bg-slate-100 text-slate-500'}`}>
+                {st?.label ?? r.status}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })}
     </div>
   )
 }
