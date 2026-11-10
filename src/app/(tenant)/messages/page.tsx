@@ -21,10 +21,10 @@ export default async function MessagesPage() {
       },
     ]
     return (
-      <div className="space-y-4 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="space-y-4 flex flex-col h-[calc(100dvh-11rem)]">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Messages</h1>
-          <p className="text-sm text-slate-500 mt-1">Chat with Your Landlord</p>
+          <h1 className="on-photo text-3xl font-semibold tracking-tight">Messages</h1>
+          <p className="on-photo text-sm mt-1 opacity-95">Chat with Your Landlord</p>
         </div>
         <MessageThread messages={demoMessages} currentUserId="demo-sarah" />
       </div>
@@ -50,10 +50,10 @@ export default async function MessagesPage() {
     .order('created_at', { ascending: true })
 
   return (
-    <div className="space-y-4 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="space-y-4 flex flex-col h-[calc(100dvh-11rem)]">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Messages</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="on-photo text-3xl font-semibold tracking-tight">Messages</h1>
+        <p className="on-photo text-sm mt-1 opacity-95">
           {landlord?.full_name ? `Chat with ${landlord.full_name}` : 'Your landlord'}
         </p>
       </div>

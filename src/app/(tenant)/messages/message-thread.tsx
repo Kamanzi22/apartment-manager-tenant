@@ -41,10 +41,10 @@ export function MessageThread({ messages, currentUserId }: { messages: Message[]
   }
 
   return (
-    <div className="flex flex-col flex-1 bg-white rounded-2xl border shadow-sm overflow-hidden">
+    <div className="glass flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
-          <p className="text-center text-sm text-slate-400 py-8">No messages yet — send one below</p>
+          <div className="empty-state mt-4"><Send className="h-5 w-5" /><p>No messages yet — send one below</p></div>
         )}
         {messages.map(msg => {
           const isBroadcast = msg.recipient_id === null
@@ -52,10 +52,10 @@ export function MessageThread({ messages, currentUserId }: { messages: Message[]
 
           if (isBroadcast) {
             return (
-              <div key={msg.id} className="flex items-start gap-2 bg-blue-50 rounded-xl px-3 py-2">
-                <Megaphone className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+              <div key={msg.id} className="flex items-start gap-2 bg-white/80 border border-white/85 rounded-2xl px-3.5 py-2.5">
+                <Megaphone className="h-4 w-4 text-[var(--accent)] shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-medium text-blue-600 mb-0.5">Announcement</p>
+                  <p className="text-xs font-bold text-[var(--accent-2)] mb-0.5">Announcement</p>
                   <p className="text-sm text-slate-700">{msg.body}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{format(new Date(msg.created_at), 'MMM d, h:mm a')}</p>
                 </div>
@@ -65,9 +65,9 @@ export function MessageThread({ messages, currentUserId }: { messages: Message[]
 
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${isMe ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'}`}>
+              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${isMe ? 'bg-[var(--ink)] text-[var(--on-dark)] rounded-br-md' : 'bg-white/80 border border-white/85 text-[var(--ink)] rounded-bl-md'}`}>
                 <p className="text-sm">{msg.body}</p>
-                <p className={`text-xs mt-0.5 ${isMe ? 'text-slate-400' : 'text-slate-400'}`}>
+                <p className={`text-xs mt-0.5 ${isMe ? 'text-[var(--metal)]' : 'text-[var(--muted)]'}`}>
                   {format(new Date(msg.created_at), 'h:mm a')}
                 </p>
               </div>
@@ -77,19 +77,19 @@ export function MessageThread({ messages, currentUserId }: { messages: Message[]
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t px-4 py-3 flex items-end gap-2">
+      <div className="border-t border-white/70 bg-white/40 px-3 py-3 flex items-end gap-2">
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Type a message… (Enter to send)"
-          className="flex-1 resize-none text-sm border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500 max-h-32 min-h-[40px]"
+          className="glass-input flex-1 resize-none text-sm h-auto! py-3 max-h-32 min-h-[46px]"
           rows={1}
         />
         <button
           onClick={handleSend}
           disabled={pending || !body.trim()}
-          className="shrink-0 bg-slate-900 text-white rounded-xl p-2 hover:bg-slate-700 transition-colors disabled:opacity-40"
+          aria-label="Send message" className="shrink-0 h-[46px] w-[46px] inline-flex items-center justify-center bg-[var(--ink)] text-[var(--on-dark)] rounded-full hover:bg-[#2B3640] transition-colors disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
         </button>
