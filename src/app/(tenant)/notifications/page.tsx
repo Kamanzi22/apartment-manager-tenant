@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NotificationList } from './notification-list'
+import { PushToggle } from '@/components/push-toggle'
 
 export default async function NotificationsPage() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
@@ -45,7 +46,10 @@ export default async function NotificationsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="on-photo text-3xl font-semibold tracking-tight">Notifications</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="on-photo text-3xl font-semibold tracking-tight">Notifications</h1>
+        <PushToggle />
+      </div>
       <NotificationList notifications={notifications ?? []} />
     </div>
   )

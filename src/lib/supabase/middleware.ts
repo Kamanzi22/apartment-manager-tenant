@@ -39,8 +39,8 @@ export async function updateSession(request: NextRequest) {
   }
   const { pathname } = request.nextUrl
 
-  // Let auth callback and reset-password through without session checks
-  if (pathname.startsWith('/auth/') || pathname === '/reset-password' || pathname === '/auth/callback') {
+  // Let auth callback, reset-password and the cron job (it checks its own secret) through
+  if (pathname.startsWith('/auth/') || pathname === '/reset-password' || pathname.startsWith('/api/cron/')) {
     return supabaseResponse
   }
 

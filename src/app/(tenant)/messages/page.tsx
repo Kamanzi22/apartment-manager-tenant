@@ -1,6 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getLandlord } from '@/lib/landlord'
+import { markMessagesRead } from '@/app/actions/messages'
 import { MessageThread } from './message-thread'
+
+// Newest messages first (then shown oldest -> newest), so the latest ones are
+// never cut off by Supabase's row limit.
+const PAGE = 200
 
 export default async function MessagesPage() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
@@ -35,11 +41,13 @@ export default async function MessagesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { createAdminClient } = await import('@/lib/supabase/server')
-  const admin = await createAdminClient()
-  const { data: landlord } = await admin.from('profiles').select('id, full_name').eq('role', 'landlord').single()
+  const landlord = await getLandlord(supabase)
 
-  const { data: messages } = await supabase
+  // Opening this page clears the unread badge (direct messages and broadcasts).
+  await markMessagesRead()
+
+  // RLS already limits broadcasts to those sent since the current lease began.
+  const { data: newest } = await supabase
     .from('messages')
     .select('id, sender_id, recipient_id, body, created_at')
     .or(
@@ -47,7 +55,10 @@ export default async function MessagesPage() {
         ? `and(sender_id.eq.${user.id},recipient_id.eq.${landlord.id}),and(sender_id.eq.${landlord.id},recipient_id.eq.${user.id}),recipient_id.is.null`
         : `sender_id.eq.${user.id}`
     )
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(PAGE)
+
+  const messages = [...(newest ?? [])].reverse()
 
   return (
     <div className="space-y-4 flex flex-col h-[calc(100dvh-11rem)]">
@@ -55,9 +66,10 @@ export default async function MessagesPage() {
         <h1 className="on-photo text-3xl font-semibold tracking-tight">Messages</h1>
         <p className="on-photo text-sm mt-1 opacity-95">
           {landlord?.full_name ? `Chat with ${landlord.full_name}` : 'Your landlord'}
+          {(newest?.length ?? 0) === PAGE && ' · newest 200 messages'}
         </p>
       </div>
-      <MessageThread messages={messages ?? []} currentUserId={user.id} />
+      <MessageThread messages={messages} currentUserId={user.id} />
     </div>
   )
 }

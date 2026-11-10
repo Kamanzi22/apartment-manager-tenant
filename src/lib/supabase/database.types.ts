@@ -1,5 +1,8 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
+export type LedgerStatus = 'paid' | 'partial' | 'pending' | 'overdue' | 'not_due'
+export type LedgerRow = { period_month: string; due_date: string; expected: number; confirmed_paid: number; pending_paid: number; balance: number; status: LedgerStatus }
+
 export type Database = {
   public: {
     Tables: {
@@ -77,6 +80,7 @@ export type Database = {
           lease_start: string
           lease_end: string | null
           status: 'active' | 'ended'
+          contract_path: string | null
           created_at: string
         }
         Insert: {
@@ -90,6 +94,7 @@ export type Database = {
           lease_start: string
           lease_end?: string | null
           status?: 'active' | 'ended'
+          contract_path?: string | null
           created_at?: string
         }
         Update: {
@@ -103,6 +108,7 @@ export type Database = {
           lease_start?: string
           lease_end?: string | null
           status?: 'active' | 'ended'
+          contract_path?: string | null
           created_at?: string
         }
         Relationships: [
@@ -368,7 +374,7 @@ export type Database = {
         Row: {
           id: string
           unit_id: string | null
-          category: 'electrical' | 'plumbing' | 'appliances' | 'structural' | 'pest_control' | 'safety' | 'wifi' | 'insurance' | 'taxes' | 'cleaning' | 'building_maintenance' | 'other'
+          category: 'electrical' | 'plumbing' | 'appliances' | 'structural' | 'pest_control' | 'safety' | 'wifi' | 'insurance' | 'taxes' | 'cleaning' | 'building_maintenance' | 'security' | 'other'
           amount: number
           expense_date: string
           description: string
@@ -380,7 +386,7 @@ export type Database = {
         Insert: {
           id?: string
           unit_id?: string | null
-          category: 'electrical' | 'plumbing' | 'appliances' | 'structural' | 'pest_control' | 'safety' | 'wifi' | 'insurance' | 'taxes' | 'cleaning' | 'building_maintenance' | 'other'
+          category: 'electrical' | 'plumbing' | 'appliances' | 'structural' | 'pest_control' | 'safety' | 'wifi' | 'insurance' | 'taxes' | 'cleaning' | 'building_maintenance' | 'security' | 'other'
           amount: number
           expense_date: string
           description: string
@@ -392,7 +398,7 @@ export type Database = {
         Update: {
           id?: string
           unit_id?: string | null
-          category?: 'electrical' | 'plumbing' | 'appliances' | 'structural' | 'pest_control' | 'safety' | 'wifi' | 'insurance' | 'taxes' | 'cleaning' | 'building_maintenance' | 'other'
+          category?: 'electrical' | 'plumbing' | 'appliances' | 'structural' | 'pest_control' | 'safety' | 'wifi' | 'insurance' | 'taxes' | 'cleaning' | 'building_maintenance' | 'security' | 'other'
           amount?: number
           expense_date?: string
           description?: string
@@ -425,9 +431,119 @@ export type Database = {
           }
         ]
       }
+      rent_schedule: {
+        Row: {
+          id: string
+          lease_id: string
+          effective_month: string
+          monthly_rent: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          lease_id: string
+          effective_month: string
+          monthly_rent: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          lease_id?: string
+          effective_month?: string
+          monthly_rent?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      message_reads: {
+        Row: {
+          message_id: string
+          user_id: string
+          read_at: string
+        }
+        Insert: {
+          message_id: string
+          user_id: string
+          read_at?: string
+        }
+        Update: {
+          message_id?: string
+          user_id?: string
+          read_at?: string
+        }
+        Relationships: []
+      }
+      sent_alerts: {
+        Row: {
+          key: string
+          sent_at: string
+        }
+        Insert: {
+          key: string
+          sent_at?: string
+        }
+        Update: {
+          key?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      rent_ledger: { Args: { p_lease: string; p_today?: string }; Returns: LedgerRow[] }
+      rent_upcoming: { Args: { p_lease: string; p_months?: number; p_today?: string }; Returns: LedgerRow[] }
+      rent_ledger_many: { Args: { p_leases: string[]; p_today?: string }; Returns: (LedgerRow & { lease_id: string })[] }
+      tenant_balance: { Args: { p_tenant: string; p_today?: string }; Returns: number }
+      set_unit_rent: { Args: { p_unit: string; p_rent: number; p_effective_month: string }; Returns: undefined }
+      end_tenancy: { Args: { p_lease: string; p_move_out: string }; Returns: undefined }
+      attach_tenant: {
+        Args: {
+          p_tenant: string; p_full_name: string; p_phone: string | null; p_unit: string
+          p_move_in: string; p_rent: number; p_deposit: number; p_lease_end: string | null
+        }
+        Returns: string
+      }
+      replace_tenancy: {
+        Args: {
+          p_old_lease: string; p_move_out: string
+          p_tenant: string; p_full_name: string; p_phone: string | null; p_unit: string
+          p_move_in: string; p_rent: number; p_deposit: number; p_lease_end: string | null
+        }
+        Returns: string
+      }
+      due_alerts: {
+        Args: { p_today?: string }
+        Returns: { key: string; user_id: string; audience: 'tenant' | 'landlord'; title: string; body: string; link: string }[]
+      }
+    }
     Enums: Record<string, never>
   }
 }

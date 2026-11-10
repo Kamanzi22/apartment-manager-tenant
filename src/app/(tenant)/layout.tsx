@@ -28,18 +28,24 @@ export default async function TenantLayout({ children }: { children: React.React
   // the middleware sends a logged-in user from /login straight back to / and it loops
   if (!profile || profile.role !== 'tenant') redirect('/auth/signout?reason=not_tenant')
 
-  const { count: unreadCount } = await supabase
-    .from('notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .is('read_at', null)
+  const [{ count: unreadCount }, { count: unreadDirect }, { count: broadcasts }, { count: broadcastReads }] = await Promise.all([
+    supabase.from('notifications').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).is('read_at', null),
+    supabase.from('messages').select('id', { count: 'exact', head: true })
+      .eq('recipient_id', user.id).is('read_at', null),
+    // RLS limits this to broadcasts sent since the current lease began.
+    supabase.from('messages').select('id', { count: 'exact', head: true }).is('recipient_id', null),
+    supabase.from('message_reads').select('message_id', { count: 'exact', head: true }).eq('user_id', user.id),
+  ])
+  const unreadMessages = (unreadDirect ?? 0) + Math.max((broadcasts ?? 0) - (broadcastReads ?? 0), 0)
 
-  const unitLabel = (profile.units as { label: string } | null)?.label ?? 'Your Unit'
+  const unitLabel = (profile.units as { label: string } | null)?.label ?? 'No unit'
 
   return (
     <div className="flex min-h-screen">
       <NavTenant
         unreadCount={unreadCount ?? 0}
+        unreadMessages={unreadMessages}
         unitLabel={unitLabel}
         fullName={profile.full_name}
       />

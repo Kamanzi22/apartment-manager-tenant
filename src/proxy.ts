@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-export async function middleware(request: NextRequest) {
+// Next 16: the `middleware` file convention is deprecated and renamed to `proxy`.
+export async function proxy(request: NextRequest) {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') return NextResponse.next()
   return await updateSession(request)
 }

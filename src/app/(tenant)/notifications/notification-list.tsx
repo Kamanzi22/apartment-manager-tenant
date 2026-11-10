@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { markNotificationRead, markAllNotificationsRead } from '@/app/actions/notifications'
 import { BellOff } from 'lucide-react'
 import { format } from 'date-fns'
@@ -17,6 +18,7 @@ interface Notification {
 
 export function NotificationList({ notifications }: { notifications: Notification[] }) {
   const [pending, startTransition] = useTransition()
+  const router = useRouter()
   const hasUnread = notifications.some(n => !n.read_at)
 
   return (
@@ -44,7 +46,12 @@ export function NotificationList({ notifications }: { notifications: Notificatio
             <button
               key={n.id}
               onClick={() => {
-                if (!n.read_at) startTransition(() => markNotificationRead(n.id))
+                startTransition(async () => {
+                  if (!n.read_at) await markNotificationRead(n.id)
+                  // Older notifications from the manager app pointed at /tenant/...
+                  const link = n.link?.startsWith('/tenant') ? n.link.slice('/tenant'.length) || '/' : n.link
+                  if (link && link.startsWith('/') && !link.startsWith('//')) router.push(link)
+                })
               }}
               className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
             >

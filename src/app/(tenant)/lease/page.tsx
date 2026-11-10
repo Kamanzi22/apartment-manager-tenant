@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { format, differenceInDays } from 'date-fns'
+import { format, differenceInDays, parseISO } from 'date-fns'
 import { FileText, AlertTriangle } from 'lucide-react'
+import { formatRWF } from '@/lib/currency'
+import { kigaliToday, ordinal } from '@/lib/rent-utils'
 
 export default async function LeasePage() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
@@ -22,7 +24,7 @@ export default async function LeasePage() {
           <div className="divide-y">
             {([
               ['Unit', 'Unit 1A'],
-              ['Monthly Rent', '$1,200.00'],
+              ['Monthly Rent', '1,200,000 RWF'],
               ['Rent Due Day', '1st of each month'],
               ['Start Date', 'January 1, 2024'],
               ['End Date', 'December 31, 2026'],
@@ -42,12 +44,15 @@ export default async function LeasePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // The current lease, or for a former tenant the most recent one (read-only).
   const { data: lease } = await supabase
     .from('leases')
     .select('id, monthly_rent, rent_due_day, lease_start, lease_end, status, units(label)')
     .eq('tenant_id', user.id)
-    .eq('status', 'active')
-    .single()
+    .order('status', { ascending: true })
+    .order('move_in_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   if (!lease) {
     return (
@@ -58,9 +63,10 @@ export default async function LeasePage() {
     )
   }
 
-  const endDate = lease.lease_end ? new Date(lease.lease_end) : null
-  const daysUntilEnd = endDate ? differenceInDays(endDate, new Date()) : null
-  const expiringSoon = daysUntilEnd !== null && daysUntilEnd <= 60
+  const endDate = lease.lease_end ? parseISO(lease.lease_end) : null
+  const isActive = lease.status === 'active'
+  const daysUntilEnd = endDate ? differenceInDays(endDate, kigaliToday()) : null
+  const expiringSoon = isActive && daysUntilEnd !== null && daysUntilEnd >= 0 && daysUntilEnd <= 60
   const unitLabel = (lease.units as { label: string } | null)?.label ?? ''
 
   return (
@@ -85,15 +91,15 @@ export default async function LeasePage() {
             <FileText className="h-5 w-5 text-[var(--metal)]" />
             <span className="font-semibold">Lease Agreement</span>
           </div>
-          <p className="text-sm text-[var(--metal)] mt-1">Active</p>
+          <p className="text-sm text-[var(--metal)] mt-1">{isActive ? 'Active' : 'Ended'}</p>
         </div>
         <div className="divide-y">
           {([
             ['Unit', unitLabel],
-            ['Monthly Rent', `$${lease.monthly_rent.toFixed(2)}`],
-            ['Rent Due Day', `${lease.rent_due_day}${lease.rent_due_day === 1 ? 'st' : lease.rent_due_day === 2 ? 'nd' : lease.rent_due_day === 3 ? 'rd' : 'th'} of each month`],
-            ['Start Date', format(new Date(lease.lease_start), 'MMMM d, yyyy')],
-            ['End Date', endDate ? format(endDate, 'MMMM d, yyyy') : 'Month-to-month'],
+            ['Monthly Rent', formatRWF(Number(lease.monthly_rent))],
+            ['Rent Due Day', `${ordinal(lease.rent_due_day)} of each month`],
+            ['Start Date', format(parseISO(lease.lease_start), 'MMMM d, yyyy')],
+            [isActive ? 'End Date' : 'Ended', endDate ? format(endDate, 'MMMM d, yyyy') : 'Month-to-month'],
           ] as [string, string][]).map(([label, value]) => (
             <div key={label} className="flex justify-between px-5 py-3">
               <span className="text-sm text-slate-500">{label}</span>

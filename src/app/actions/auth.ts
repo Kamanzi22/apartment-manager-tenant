@@ -2,7 +2,8 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
+import { emailLayout, sendEmail } from '@/lib/email'
+import { publicOriginFromHeaders } from '@/lib/public-origin'
 
 export async function signOut() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
@@ -13,10 +14,49 @@ export async function signOut() {
   redirect('/login')
 }
 
+// Same message whether or not the account exists, so the login form cannot be
+// used to find out who has an account.
+const GENERIC_ERROR = 'Invalid credentials. Check your email/phone and password.'
+const NETWORK_ERROR = 'Could not reach the server. Check your connection and try again.'
+
+async function tenantEmailForPhone(phone: string): Promise<string | null> {
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length < 6) return null
+  const admin = await createAdminClient()
+  const { data: profiles } = await admin
+    .from('profiles')
+    .select('id, phone')
+    .eq('role', 'tenant')
+    .not('phone', 'is', null)
+  const matches = (profiles ?? []).filter(p => p.phone && p.phone.replace(/\D/g, '') === digits)
+  if (matches.length !== 1) return null
+  const { data } = await admin.auth.admin.getUserById(matches[0].id)
+  return data.user?.email ?? null
+}
+
+/**
+ * Signs in with an email or a phone number. The email for a phone number is
+ * looked up and used here on the server; it is never sent to the browser.
+ */
+export async function signInWithIdentifier(identifier: string, password: string): Promise<{ error?: string }> {
+  const id = (identifier ?? '').trim()
+  if (!id || !password) return { error: GENERIC_ERROR }
+  try {
+    const email = id.includes('@') ? id : await tenantEmailForPhone(id)
+    if (!email) return { error: GENERIC_ERROR }
+    const supabase = await createClient()
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { error: error.status && error.status >= 500 ? NETWORK_ERROR : GENERIC_ERROR }
+    return {}
+  } catch {
+    return { error: NETWORK_ERROR }
+  }
+}
+
 export async function registerTenant(formData: FormData): Promise<{ error?: string; email?: string }> {
-  const email    = (formData.get('email')     as string).trim()
+  const email    = ((formData.get('email')     as string) ?? '').trim()
   const password = formData.get('password')   as string
-  const fullName = (formData.get('full_name') as string).trim()
+  const fullName = ((formData.get('full_name') as string) ?? '').trim()
   const phone    = ((formData.get('phone')    as string) || '').trim() || null
 
   if (!email || !password || !fullName) return { error: 'Name, email and password are required.' }
@@ -51,16 +91,11 @@ export async function registerTenant(formData: FormData): Promise<{ error?: stri
 }
 
 export async function sendPasswordResetEmail(email: string): Promise<{ error?: string }> {
-  const brevoKey = process.env.BREVO_API_KEY
-  const fromEmail = process.env.EMAIL_FROM
-  const fromName = process.env.EMAIL_FROM_NAME ?? 'Tenant Portal'
-
-  if (!brevoKey || !fromEmail) {
+  if (!process.env.BREVO_API_KEY || !process.env.EMAIL_FROM) {
     return { error: 'Email service not configured. Contact your property manager to reset your password.' }
   }
 
   const admin = await createAdminClient()
-
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email: email.trim(),
@@ -72,61 +107,14 @@ export async function sendPasswordResetEmail(email: string): Promise<{ error?: s
   // Link straight to our own /auth/confirm, which verifies the token server-side and sets the
   // session cookies. Supabase's action_link instead returns tokens in the URL hash (implicit
   // flow), which the PKCE browser client rejects — every reset showed "link expired".
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host')
-  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https')
-  const resetLink = `${proto}://${host}/auth/confirm?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=recovery&next=/reset-password`
+  const origin = await publicOriginFromHeaders()
+  const resetLink = `${origin}/auth/confirm?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=recovery&next=/reset-password`
 
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': brevoKey,
-    },
-    body: JSON.stringify({
-      sender: { name: fromName, email: fromEmail },
-      to: [{ email: email.trim() }],
-      subject: 'Reset your Tenant Portal password',
-      htmlContent: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
-          <h2 style="color:#1e293b;margin:0 0 12px">Password Reset</h2>
-          <p style="color:#475569;margin:0 0 24px">
-            Click the button below to set a new password for your Tenant Portal account.
-            This link expires in 24&nbsp;hours.
-          </p>
-          <a href="${resetLink}"
-             style="display:inline-block;background:#1e293b;color:#fff;text-decoration:none;
-                    padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
-            Reset Password
-          </a>
-          <p style="color:#94a3b8;font-size:13px;margin:24px 0 0">
-            If you did not request this, you can safely ignore this email.
-          </p>
-        </div>
-      `,
-    }),
-  })
-
-  if (!res.ok) return { error: 'Failed to send email. Please try again.' }
+  const ok = await sendEmail(email.trim(), 'Reset your Tenant Portal password', emailLayout(
+    'Password Reset',
+    'Click the button below to set a new password for your Tenant Portal account. This link expires in 24&nbsp;hours. If you did not request this, you can safely ignore this email.',
+    { href: resetLink, label: 'Reset Password' },
+  ))
+  if (!ok) return { error: 'Failed to send email. Please try again.' }
   return {}
-}
-
-export async function lookupEmailByPhone(phone: string): Promise<string | null> {
-  const admin = await createAdminClient()
-
-  const { data: profiles } = await admin
-    .from('profiles')
-    .select('id, phone')
-    .eq('role', 'tenant')
-    .not('phone', 'is', null)
-
-  if (!profiles?.length) return null
-
-  const normalize = (p: string) => p.replace(/\D/g, '')
-  const normalizedInput = normalize(phone)
-  const match = profiles.find(p => p.phone && normalize(p.phone) === normalizedInput)
-  if (!match) return null
-
-  const { data } = await admin.auth.admin.getUserById(match.id)
-  return data.user?.email ?? null
 }

@@ -1,83 +1,75 @@
-import { format, getDaysInMonth, setDate, startOfMonth } from 'date-fns'
+// Kept identical in apartment-manager and apartment-manager-tenant.
+//
+// Every rent date is a Kigali calendar date (Africa/Kigali, UTC+2, no DST).
+// Render runs in UTC, so "today" must never come from the server's local
+// clock: between 00:00 and 02:00 Kigali time it would still be yesterday.
+import { format, getDaysInMonth, parseISO } from 'date-fns'
 
-export function currentPeriodMonth(): string {
-  return format(new Date(), 'yyyy-MM')
+export const TIME_ZONE = 'Africa/Kigali'
+
+const kigaliDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+})
+
+/** Today's date in Kigali as 'YYYY-MM-DD'. */
+export function kigaliDateString(now: Date = new Date()): string {
+  const parts = Object.fromEntries(kigaliDay.formatToParts(now).map(p => [p.type, p.value]))
+  return `${parts.year}-${parts.month}-${parts.day}`
 }
 
-export function getDueDate(rentDueDay: number, forMonth?: Date): Date {
-  const base = forMonth ?? new Date()
+/** Today's Kigali date as a local Date at midnight (for date-fns formatting). */
+export function kigaliToday(now: Date = new Date()): Date {
+  return parseISO(kigaliDateString(now))
+}
+
+/** The current rent month in Kigali, 'YYYY-MM'. */
+export function currentPeriodMonth(now: Date = new Date()): string {
+  return kigaliDateString(now).slice(0, 7)
+}
+
+/** 'YYYY-MM' -> local Date on the 1st of that month. */
+export function monthStart(period: string): Date {
+  const [y, m] = period.split('-').map(Number)
+  return new Date(y, m - 1, 1)
+}
+
+/** Due date for a month: min(rent due day, last day of the month, lease end). */
+export function getDueDate(rentDueDay: number, forMonth?: Date | string, leaseEnd?: string | null): Date {
+  const base = typeof forMonth === 'string' ? monthStart(forMonth) : forMonth ?? kigaliToday()
   const year = base.getFullYear()
   const month = base.getMonth()
-  const maxDay = getDaysInMonth(new Date(year, month))
-  const day = Math.min(rentDueDay, maxDay)
-  return setDate(startOfMonth(new Date(year, month)), day)
+  const day = Math.min(rentDueDay, getDaysInMonth(new Date(year, month)))
+  const due = new Date(year, month, day)
+  if (leaseEnd) {
+    const end = parseISO(leaseEnd)
+    if (end < due) return end
+  }
+  return due
 }
 
 export function formatPeriodMonth(period: string): string {
-  const [year, month] = period.split('-').map(Number)
-  return format(new Date(year, month - 1), 'MMMM yyyy')
+  return format(monthStart(period), 'MMMM yyyy')
 }
 
 export function periodMonthFromDate(date: Date): string {
   return format(date, 'yyyy-MM')
 }
 
+export function addMonths(period: string, n: number): string {
+  const [y, m] = period.split('-').map(Number)
+  const total = y * 12 + (m - 1) + n
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
+}
+
 /** Every "YYYY-MM" from start to end, inclusive. */
 export function monthsBetween(start: string, end: string): string[] {
   const result: string[] = []
-  let [y, m] = start.split('-').map(Number)
-  const [ey, em] = end.split('-').map(Number)
-  while (y < ey || (y === ey && m <= em)) {
-    result.push(`${y}-${String(m).padStart(2, '0')}`)
-    m++
-    if (m > 12) { m = 1; y++ }
-  }
+  for (let mo = start; mo <= end; mo = addMonths(mo, 1)) result.push(mo)
   return result
 }
 
-export interface LedgerPayment {
-  period_month: string
-  amount: number
-  status: string
-}
-
-export interface OwedMonth {
-  period_month: string
-  dueDate: Date
-  /** Amount still owed for the month */
-  balance: number
-  reason: 'unpaid' | 'rejected' | 'partial'
-}
-
-/**
- * Months on the lease whose due date has passed and that are not covered by a
- * confirmed or pending payment. A month with a pending payment is not treated as owed;
- * the landlord still has to review it.
- */
-export function computeOwedMonths(
-  lease: { move_in_date: string; lease_end: string | null; rent_due_day: number; monthly_rent: number },
-  payments: LedgerPayment[],
-  today: Date = new Date(),
-): OwedMonth[] {
-  const todayMonth = format(today, 'yyyy-MM')
-  const leaseEndMonth = lease.lease_end ? lease.lease_end.slice(0, 7) : todayMonth
-  const endMonth = leaseEndMonth < todayMonth ? leaseEndMonth : todayMonth
-  const startMonth = lease.move_in_date.slice(0, 7)
-
-  const owed: OwedMonth[] = []
-  for (const mo of monthsBetween(startMonth, endMonth)) {
-    const [y, m] = mo.split('-').map(Number)
-    const dueDate = getDueDate(lease.rent_due_day, new Date(y, m - 1, 1))
-    if (dueDate > today) continue
-
-    const p = payments.find(x => x.period_month === mo)
-    if (!p) {
-      owed.push({ period_month: mo, dueDate, balance: lease.monthly_rent, reason: 'unpaid' })
-    } else if (p.status === 'rejected') {
-      owed.push({ period_month: mo, dueDate, balance: lease.monthly_rent, reason: 'rejected' })
-    } else if (p.status === 'confirmed' && p.amount < lease.monthly_rent) {
-      owed.push({ period_month: mo, dueDate, balance: lease.monthly_rent - p.amount, reason: 'partial' })
-    }
-  }
-  return owed
+export function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }

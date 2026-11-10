@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { MaintenanceForm } from './maintenance-form'
 import { MAINTENANCE_CATEGORIES } from '@/lib/categories'
 import { format } from 'date-fns'
+import { fileUrl } from '@/lib/storage-url'
 
 const statusConfig = {
   submitted:    { label: 'Submitted',    cls: 'bg-slate-100 text-slate-700' },
@@ -19,6 +20,7 @@ interface Request {
   status: string
   description: string
   landlord_comment: string | null
+  photo_urls?: string[] | null
   created_at: string
   updated_at: string
 }
@@ -51,23 +53,26 @@ export default async function MaintenancePage() {
         updated_at: '2026-05-14T11:30:00Z',
       },
     ]
-    return <MaintenanceView requests={demoRequests} />
+    return <MaintenanceView requests={demoRequests} hasUnit />
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: requests } = await supabase
-    .from('maintenance_requests')
-    .select('id, category, urgency, status, description, landlord_comment, created_at, updated_at')
-    .eq('tenant_id', user.id)
-    .order('created_at', { ascending: false })
+  const [{ data: requests }, { data: profile }] = await Promise.all([
+    supabase
+      .from('maintenance_requests')
+      .select('id, category, urgency, status, description, landlord_comment, photo_urls, created_at, updated_at')
+      .eq('tenant_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase.from('profiles').select('unit_id').eq('id', user.id).single(),
+  ])
 
-  return <MaintenanceView requests={requests ?? []} />
+  return <MaintenanceView requests={requests ?? []} hasUnit={!!profile?.unit_id} />
 }
 
-function MaintenanceView({ requests }: { requests: Request[] }) {
+function MaintenanceView({ requests, hasUnit }: { requests: Request[]; hasUnit: boolean }) {
   const open = requests.filter(r => r.status !== 'resolved')
   const history = requests
     .filter(r => r.status === 'resolved')
@@ -80,7 +85,11 @@ function MaintenanceView({ requests }: { requests: Request[] }) {
         <p className="on-photo text-sm mt-1 opacity-95">Submit and track repair requests</p>
       </div>
 
-      <MaintenanceForm />
+      {hasUnit ? <MaintenanceForm /> : (
+        <section className="glass p-5 text-sm text-[var(--muted-2)]">
+          You are not living in one of the units now, so new requests are switched off. Your past requests are below.
+        </section>
+      )}
 
       <section className="glass p-5">
         <h2 className="text-base font-semibold mb-3">
@@ -129,6 +138,19 @@ function RequestList({ requests, showResolved = false }: { requests: Request[]; 
                   </span>
                 </div>
                 <p className="text-sm text-slate-600 mt-0.5">{r.description}</p>
+                {!!r.photo_urls?.length && (
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    {r.photo_urls.map((stored, i) => {
+                      const url = fileUrl('maintenance-photos', stored)
+                      return url ? (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Photo ${i + 1}`} className="h-14 w-14 rounded-xl object-cover border border-white/85" />
+                        </a>
+                      ) : null
+                    })}
+                  </div>
+                )}
                 {r.landlord_comment && (
                   <p className="text-sm text-[var(--ink)] bg-white/75 rounded-xl px-3 py-2 mt-2">
                     Landlord: {r.landlord_comment}

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { MoveOutForm } from './move-out-form'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { CheckCircle2, Clock } from 'lucide-react'
 
 export default async function MoveOutPage() {
@@ -21,14 +21,6 @@ export default async function MoveOutPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: notice } = await supabase
-    .from('move_out_notices')
-    .select('id, intended_move_out_date, reason, status, created_at')
-    .eq('tenant_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
   // Fetch lease_id for the form
   const { data: lease } = await supabase
     .from('leases')
@@ -36,6 +28,18 @@ export default async function MoveOutPage() {
     .eq('tenant_id', user.id)
     .eq('status', 'active')
     .maybeSingle()
+
+  // Only a notice for the current lease counts (a returning tenant's old notice does not).
+  const { data: notice } = lease
+    ? await supabase
+        .from('move_out_notices')
+        .select('id, intended_move_out_date, reason, status, created_at')
+        .eq('tenant_id', user.id)
+        .eq('lease_id', lease.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
 
   return (
     <div className="space-y-6">
@@ -59,7 +63,7 @@ export default async function MoveOutPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-500">Move-out date</span>
-              <span className="font-medium text-slate-800">{format(new Date(notice.intended_move_out_date), 'MMMM d, yyyy')}</span>
+              <span className="font-medium text-slate-800">{format(parseISO(notice.intended_move_out_date), 'MMMM d, yyyy')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Submitted</span>

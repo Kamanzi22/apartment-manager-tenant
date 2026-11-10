@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/actions/auth'
-import { CreditCard, Wrench, MessageSquare, LogOut } from 'lucide-react'
+import { CreditCard, Wrench, MessageSquare, LogOut, Bell } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'Rent', icon: CreditCard, exact: true },
   { href: '/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/messages', label: 'Messages', icon: MessageSquare },
+  { href: '/notifications', label: 'Alerts', icon: Bell },
 ]
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -17,6 +18,7 @@ function cn(...classes: (string | boolean | undefined)[]) {
 
 interface Props {
   unreadCount: number
+  unreadMessages?: number
   unitLabel: string
   fullName: string
 }
@@ -27,8 +29,10 @@ const activeCls = 'bg-white/85 text-[var(--ink)] font-semibold shadow-[0_4px_12p
 const idleCls = 'text-[var(--muted-2)] hover:bg-white/40'
 
 // Floating glass tab bar, used at every screen size.
-export function NavTenant({ unreadCount: _unreadCount, unitLabel, fullName }: Props) {
+export function NavTenant({ unreadCount, unreadMessages = 0, unitLabel, fullName }: Props) {
   const pathname = usePathname()
+  const badgeFor = (href: string) =>
+    href === '/messages' ? unreadMessages : href === '/notifications' ? unreadCount : 0
 
   return (
     <nav
@@ -38,15 +42,22 @@ export function NavTenant({ unreadCount: _unreadCount, unitLabel, fullName }: Pr
       <div className="flex gap-1">
         {navItems.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
+          const badge = badgeFor(href)
           return (
             <Link
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
-              className={cn('flex-1', tabCls, active ? activeCls : idleCls)}
+              aria-label={badge > 0 ? `${label}, ${badge} unread` : undefined}
+              className={cn('flex-1 relative', tabCls, active ? activeCls : idleCls)}
             >
               <Icon className="h-5 w-5" />
               <span>{label}</span>
+              {badge > 0 && (
+                <span aria-hidden className="absolute top-1 right-2 h-4 min-w-4 px-1 rounded-full bg-[var(--danger-text)] text-white text-[10px] font-bold flex items-center justify-center">
+                  {badge > 9 ? '9+' : badge}
+                </span>
+              )}
             </Link>
           )
         })}

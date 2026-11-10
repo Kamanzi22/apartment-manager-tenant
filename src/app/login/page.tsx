@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { lookupEmailByPhone, registerTenant, sendPasswordResetEmail } from '@/app/actions/auth'
+import { signInWithIdentifier, registerTenant, sendPasswordResetEmail } from '@/app/actions/auth'
+import { GoogleButton } from '@/components/google-button'
 import { Building2, ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react'
 
 type Mode = 'signin' | 'register' | 'forgot'
@@ -27,6 +28,7 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search)
     const linkError = params.get('error')
     if (linkError === 'not_tenant') { setError('This account is not a tenant account. Use the manager app to sign in.'); return }
+    if (linkError === 'google_failed') { setError('Google sign-in did not finish. Please try again.'); return }
     if (linkError) { setError('This reset link is invalid or has expired. Please request a new one.'); return }
     if (!code) return
     const supabase = createClient()
@@ -60,26 +62,10 @@ export default function LoginPage() {
     }
 
     try {
-      const supabase = createClient()
-      const trimmed = identifier.trim()
-      const isPhone = !trimmed.includes('@')
-
-      let email = trimmed
-      if (isPhone) {
-        const resolved = await lookupEmailByPhone(trimmed)
-        if (!resolved) {
-          setError('No account found with this phone number.')
-          setLoading(false)
-          return
-        }
-        email = resolved
-      }
-
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setError(error.status === 400
-          ? 'Invalid credentials. Check your email/phone and password.'
-          : 'Could not reach the server. Check your connection and try again.')
+      // The phone -> email lookup and the sign-in both happen on the server.
+      const result = await signInWithIdentifier(identifier, password)
+      if (result.error) {
+        setError(result.error)
         setLoading(false)
       } else {
         window.location.replace('/')
@@ -224,6 +210,15 @@ export default function LoginPage() {
                 Forgot your password?
               </button>
             </form>
+          )}
+
+          {(mode === 'signin' || mode === 'register') && (
+            <>
+              <div className="flex items-center gap-3 text-xs text-slate-400">
+                <span className="h-px flex-1 bg-white/80" />or<span className="h-px flex-1 bg-white/80" />
+              </div>
+              <GoogleButton next="/auth/google" onError={setError} />
+            </>
           )}
 
           {/* REGISTER */}
