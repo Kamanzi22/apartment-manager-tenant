@@ -39,7 +39,7 @@ export function NotificationList({ notifications }: { notifications: Notificatio
           <p className="text-sm">No notifications yet</p>
         </div>
       ) : (
-        <div className="rounded-xl border bg-white divide-y shadow-sm overflow-hidden">
+        <div className="glass divide-y divide-white/70 overflow-hidden overflow-hidden">
           {notifications.map(n => (
             <button
               key={n.id}

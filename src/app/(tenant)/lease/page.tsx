@@ -8,16 +8,16 @@ export default async function LeasePage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Lease</h1>
-          <p className="text-sm text-slate-500 mt-1">Unit 1A</p>
+          <h1 className="on-photo text-3xl font-semibold tracking-tight">My Lease</h1>
+          <p className="on-photo text-sm mt-1 opacity-95">Unit 1A</p>
         </div>
-        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-          <div className="bg-slate-900 px-5 py-4 text-white">
+        <div className="glass overflow-hidden">
+          <div className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] px-5 py-4 text-white">
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-slate-300" />
+              <FileText className="h-5 w-5 text-[var(--metal)]" />
               <span className="font-semibold">Lease Agreement</span>
             </div>
-            <p className="text-sm text-slate-400 mt-1">Active</p>
+            <p className="text-sm text-[var(--metal)] mt-1">Active</p>
           </div>
           <div className="divide-y">
             {([
@@ -66,8 +66,8 @@ export default async function LeasePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">My Lease</h1>
-        <p className="text-sm text-slate-500 mt-1">{unitLabel}</p>
+        <h1 className="on-photo text-3xl font-semibold tracking-tight">My Lease</h1>
+        <p className="on-photo text-sm mt-1 opacity-95">{unitLabel}</p>
       </div>
 
       {expiringSoon && daysUntilEnd !== null && (
@@ -79,13 +79,13 @@ export default async function LeasePage() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div className="bg-slate-900 px-5 py-4 text-white">
+      <div className="glass overflow-hidden">
+        <div className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] px-5 py-4 text-white">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-slate-300" />
+            <FileText className="h-5 w-5 text-[var(--metal)]" />
             <span className="font-semibold">Lease Agreement</span>
           </div>
-          <p className="text-sm text-slate-400 mt-1">Active</p>
+          <p className="text-sm text-[var(--metal)] mt-1">Active</p>
         </div>
         <div className="divide-y">
           {([

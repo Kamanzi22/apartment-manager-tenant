@@ -26,7 +26,7 @@ export default async function NotificationsPage() {
     ]
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
+        <h1 className="on-photo text-3xl font-semibold tracking-tight">Notifications</h1>
         <NotificationList notifications={demoNotifications} />
       </div>
     )
@@ -45,7 +45,7 @@ export default async function NotificationsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
+      <h1 className="on-photo text-3xl font-semibold tracking-tight">Notifications</h1>
       <NotificationList notifications={notifications ?? []} />
     </div>
   )

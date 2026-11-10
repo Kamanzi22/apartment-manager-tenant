@@ -9,8 +9,8 @@ export default async function MoveOutPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Move-out Notice</h1>
-          <p className="text-sm text-slate-500 mt-1">At least 30 days notice required</p>
+          <h1 className="on-photo text-3xl font-semibold tracking-tight">Move-out Notice</h1>
+          <p className="on-photo text-sm mt-1 opacity-95">At least 30 days notice required</p>
         </div>
         <MoveOutForm leaseId={null} />
       </div>
@@ -40,12 +40,12 @@ export default async function MoveOutPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Move-out Notice</h1>
-        <p className="text-sm text-slate-500 mt-1">At least 30 days notice required</p>
+        <h1 className="on-photo text-3xl font-semibold tracking-tight">Move-out Notice</h1>
+        <p className="on-photo text-sm mt-1 opacity-95">At least 30 days notice required</p>
       </div>
 
       {notice ? (
-        <div className="bg-white rounded-2xl border shadow-sm p-5">
+        <div className="glass p-5">
           <div className="flex items-center gap-2 mb-4">
             {notice.status === 'acknowledged' ? (
               <CheckCircle2 className="h-5 w-5 text-green-500" />
