@@ -7,7 +7,7 @@ export default async function TenantLayout({ children }: { children: React.React
     return (
       <div className="flex min-h-screen">
         <NavTenant unreadCount={1} unitLabel="Unit 1A" fullName="Sarah Johnson" />
-        <main className="flex-1 lg:ml-56 pb-20 lg:pb-6 px-4 py-6 max-w-3xl mx-auto w-full">
+        <main className="flex-1 min-w-0 pb-32 px-4 pt-8 max-w-2xl mx-auto w-full">
           {children}
         </main>
       </div>
@@ -43,7 +43,7 @@ export default async function TenantLayout({ children }: { children: React.React
         unitLabel={unitLabel}
         fullName={profile.full_name}
       />
-      <main className="flex-1 lg:ml-56 pb-20 lg:pb-6 px-4 py-6 max-w-3xl mx-auto w-full">
+      <main className="flex-1 min-w-0 pb-32 px-4 pt-8 max-w-2xl mx-auto w-full">
         {children}
       </main>
     </div>
