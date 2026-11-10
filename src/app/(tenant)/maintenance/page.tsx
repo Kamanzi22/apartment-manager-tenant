@@ -1,3 +1,4 @@
+import { Wrench } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { MaintenanceForm } from './maintenance-form'
@@ -75,22 +76,22 @@ function MaintenanceView({ requests }: { requests: Request[] }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Maintenance</h1>
-        <p className="text-sm text-slate-500 mt-1">Submit and track repair requests</p>
+        <h1 className="on-photo text-3xl font-semibold tracking-tight">Maintenance</h1>
+        <p className="on-photo text-sm mt-1 opacity-95">Submit and track repair requests</p>
       </div>
 
       <MaintenanceForm />
 
-      <section>
-        <h2 className="text-base font-semibold text-slate-800 mb-3">
-          Open Requests {open.length > 0 && <span className="text-slate-400 font-normal">({open.length})</span>}
+      <section className="glass p-5">
+        <h2 className="text-base font-semibold mb-3">
+          Open Requests {open.length > 0 && <span className="text-[var(--muted)] font-normal">({open.length})</span>}
         </h2>
         {open.length === 0 ? <EmptyState text="No open requests" /> : <RequestList requests={open} />}
       </section>
 
-      <section>
-        <h2 className="text-base font-semibold text-slate-800 mb-3">
-          History {history.length > 0 && <span className="text-slate-400 font-normal">({history.length})</span>}
+      <section className="glass p-5">
+        <h2 className="text-base font-semibold mb-3">
+          History {history.length > 0 && <span className="text-[var(--muted)] font-normal">({history.length})</span>}
         </h2>
         {history.length === 0
           ? <EmptyState text="No resolved requests yet" />
@@ -102,25 +103,26 @@ function MaintenanceView({ requests }: { requests: Request[] }) {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-dashed bg-white px-4 py-6 text-center text-sm text-slate-400">
-      {text}
+    <div className="empty-state">
+      <Wrench className="h-5 w-5" />
+      <p>{text}</p>
     </div>
   )
 }
 
 function RequestList({ requests, showResolved = false }: { requests: Request[]; showResolved?: boolean }) {
   return (
-    <div className="rounded-xl border bg-white divide-y shadow-sm overflow-hidden">
+    <div className="space-y-2">
       {requests.map(r => {
         const st = statusConfig[r.status as keyof typeof statusConfig]
         const updated = r.updated_at !== r.created_at
         return (
-          <div key={r.id} className="p-4">
+          <div key={r.id} className="glass-row p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm text-slate-900">{categoryLabel(r.category)}</span>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  <span className={`chip ${
                     r.urgency === 'high' ? 'text-red-600' : r.urgency === 'medium' ? 'text-amber-600' : 'text-slate-500'
                   }`}>
                     {r.urgency}
@@ -128,7 +130,7 @@ function RequestList({ requests, showResolved = false }: { requests: Request[]; 
                 </div>
                 <p className="text-sm text-slate-600 mt-0.5">{r.description}</p>
                 {r.landlord_comment && (
-                  <p className="text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mt-2">
+                  <p className="text-sm text-[var(--ink)] bg-white/75 rounded-xl px-3 py-2 mt-2">
                     Landlord: {r.landlord_comment}
                   </p>
                 )}
@@ -138,7 +140,7 @@ function RequestList({ requests, showResolved = false }: { requests: Request[]; 
                   {!showResolved && updated && ` · Updated ${format(new Date(r.updated_at), 'MMM d, yyyy')}`}
                 </p>
               </div>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${st?.cls ?? 'bg-slate-100 text-slate-500'}`}>
+              <span className={`chip shrink-0 ${st?.cls ?? 'bg-slate-100 text-slate-500'}`}>
                 {st?.label ?? r.status}
               </span>
             </div>
