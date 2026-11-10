@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { submitPayment } from '@/app/actions/payments'
 import { Upload, CheckCircle2, Clock, XCircle, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatRWF } from '@/lib/currency'
+import { PaymentCardShell, fieldLabelCls, uploadBoxCls, statusBoxCls } from '@/components/tenant-ui'
 
 interface Payment {
   id: string
@@ -46,35 +46,27 @@ export function RentCard({ leaseId, monthlyRent, periodMonth, periodLabel, dueDa
   }
 
   const statusConfig = {
-    confirmed: { icon: <CheckCircle2 className="h-5 w-5 text-green-500" />, label: 'Confirmed', cls: 'bg-green-50 border-green-200' },
-    pending_review: { icon: <Clock className="h-5 w-5 text-amber-500" />, label: 'Pending Review', cls: 'bg-amber-50 border-amber-200' },
-    rejected: { icon: <XCircle className="h-5 w-5 text-red-500" />, label: 'Rejected', cls: 'bg-red-50 border-red-200' },
+    confirmed: { icon: <CheckCircle2 className="h-5 w-5" />, label: 'Confirmed', cls: statusBoxCls.confirmed },
+    pending_review: { icon: <Clock className="h-5 w-5" />, label: 'Pending Review', cls: statusBoxCls.pending_review },
+    rejected: { icon: <XCircle className="h-5 w-5" />, label: 'Rejected', cls: statusBoxCls.rejected },
   }
 
   const st = currentPayment ? statusConfig[currentPayment.status as keyof typeof statusConfig] : null
 
   return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="bg-slate-900 px-5 py-4 text-white">
-        <p className="text-sm text-slate-400">{periodLabel}</p>
-        <p className="text-3xl font-bold mt-1">{formatRWF(monthlyRent)}</p>
-        <p className="text-xs text-slate-400 mt-1">Due {dueDate}</p>
-      </div>
-
-      <div className="p-5 space-y-4">
+    <PaymentCardShell periodLabel={periodLabel} amount={monthlyRent} dueDate={dueDate}>
         {/* Current status */}
         {currentPayment && st && (
-          <div className={`flex items-start gap-3 rounded-xl border p-3 ${st.cls}`}>
+          <div className={`flex items-start gap-3 rounded-2xl p-3.5 ${st.cls}`}>
             {st.icon}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800">{st.label}</p>
+              <p className="text-sm font-bold">{st.label}</p>
               {currentPayment.landlord_notes && (
-                <p className="text-sm text-slate-600 mt-0.5">{currentPayment.landlord_notes}</p>
+                <p className="text-sm mt-0.5">{currentPayment.landlord_notes}</p>
               )}
               {currentPayment.receipt_file_url && (
                 <a href={currentPayment.receipt_file_url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 mt-1">
+                  className="inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 mt-1">
                   <ExternalLink className="h-3 w-3" /> View receipt
                 </a>
               )}
@@ -86,28 +78,29 @@ export function RentCard({ leaseId, monthlyRent, periodMonth, periodLabel, dueDa
         {(!currentPayment || currentPayment.status === 'rejected') && (
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-slate-700">Amount paid (RWF)</label>
+              <label htmlFor="rent-amount" className={fieldLabelCls}>Amount paid (RWF)</label>
               <input
+                id="rent-amount"
                 type="number"
                 min="1"
                 step="1"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                className="glass-input text-sm"
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-slate-700">Payment receipt *</label>
-              <label className="flex flex-col items-center gap-2 border-2 border-dashed rounded-xl p-4 cursor-pointer hover:bg-slate-50 transition-colors">
-                <Upload className="h-6 w-6 text-slate-400" />
-                <span className="text-sm text-slate-500">
+              <p className={fieldLabelCls}>Payment receipt *</p>
+              <label className={uploadBoxCls}>
+                <Upload className="h-6 w-6 text-[var(--muted)]" />
+                <span className="text-sm text-[var(--muted)]">
                   {file ? file.name : 'Tap to attach receipt (image or PDF)'}
                 </span>
                 <input
                   ref={fileRef}
                   type="file"
                   accept="image/*,.pdf"
-                  className="hidden"
+                  className="sr-only"
                   onChange={e => setFile(e.target.files?.[0] ?? null)}
                 />
               </label>
@@ -115,13 +108,12 @@ export function RentCard({ leaseId, monthlyRent, periodMonth, periodLabel, dueDa
             <button
               type="submit"
               disabled={pending}
-              className="w-full bg-slate-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-slate-700 transition-colors disabled:opacity-60"
+              className="btn-primary w-full"
             >
               {pending ? 'Submitting…' : 'Submit Payment'}
             </button>
           </form>
         )}
-      </div>
-    </div>
+    </PaymentCardShell>
   )
 }

@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { RentCard } from './rent-card'
 import { format } from 'date-fns'
-import { AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { PaymentHistory } from '@/components/tenant-ui'
 import {
   getDueDate,
   currentPeriodMonth,
@@ -70,9 +71,11 @@ export default async function RentPage({
 
   if (!lease) {
     return (
-      <div className="text-center py-16 text-slate-400">
-        <p className="text-lg font-medium">No active lease found</p>
-        <p className="text-sm mt-1">Contact your landlord if you believe this is an error</p>
+      <div className="glass p-6">
+        <div className="empty-state">
+          <p className="text-base font-semibold text-[var(--ink)]">No active lease found</p>
+          <p>Contact your landlord if you believe this is an error</p>
+        </div>
       </div>
     )
   }
@@ -137,75 +140,90 @@ function RentView({
   const totalPaid = history.filter(p => p.status === 'confirmed').reduce((s, p) => s + p.amount, 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Rent</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="on-photo text-3xl font-semibold tracking-tight">Rent</h1>
+        <p className="on-photo text-sm mt-1 opacity-95">
           {unitLabel} · Due {format(getDueDate(rentDueDay), 'MMM d')}
         </p>
       </div>
 
       {/* What the tenant owes */}
       {owed.length > 0 ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 overflow-hidden">
-          <div className="flex items-start gap-3 px-5 py-4">
-            <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">You owe</p>
-              <p className="text-2xl font-bold text-red-700">{formatRWF(totalOwed)}</p>
-              <p className="text-xs text-red-600 mt-0.5">
+        <>
+          <section className="hero-card p-6">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium text-[var(--metal)]">You owe</p>
+              <span className="chip chip-danger">
+                <AlertCircle className="h-3 w-3" />
                 {owed.length} {owed.length === 1 ? 'month' : 'months'} overdue
-              </p>
+              </span>
             </div>
-          </div>
-          <div className="bg-white divide-y border-t border-red-200">
-            {owed.map(o => (
-              <div key={o.period_month} className="flex items-center justify-between gap-3 px-5 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800">{formatPeriodMonth(o.period_month)}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Was due {format(o.dueDate, 'MMM d, yyyy')}
-                    {o.reason === 'rejected' && ' · payment rejected'}
-                    {o.reason === 'partial' && ' · partly paid'}
-                  </p>
+            <p className="mt-2 text-4xl font-semibold tracking-tight">
+              {new Intl.NumberFormat('en-US').format(Math.round(totalOwed))}{' '}
+              <span className="accent-word text-[0.85em]">RWF</span>
+            </p>
+            <p className="text-sm text-white/90 mt-2">Choose a month below to pay it.</p>
+          </section>
+
+          <section className="glass p-3 space-y-2" aria-label="Overdue months">
+            {owed.map(o => {
+              const isSelected = selectedMonth === o.period_month
+              return (
+                <div
+                  key={o.period_month}
+                  data-selected={isSelected}
+                  className="glass-row flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{formatPeriodMonth(o.period_month)}</p>
+                    <p className="text-xs text-[var(--muted)] mt-0.5">
+                      Was due {format(o.dueDate, 'MMM d, yyyy')}
+                      {o.reason === 'rejected' && ' · payment rejected'}
+                      {o.reason === 'partial' && ' · partly paid'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-sm font-bold text-[var(--danger-text)]">{formatRWF(o.balance)}</span>
+                    {o.reason === 'partial' ? (
+                      <Link href="/messages" className="inline-flex items-center min-h-11 text-xs font-semibold text-[var(--muted-2)] underline underline-offset-2">
+                        Contact landlord
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/?month=${o.period_month}#pay`}
+                        aria-current={isSelected ? 'true' : undefined}
+                        className={isSelected
+                          ? 'inline-flex items-center min-h-11 px-4 rounded-full text-xs font-semibold bg-white/90 border border-white text-[var(--muted-2)]'
+                          : 'inline-flex items-center min-h-11 px-5 rounded-full text-xs font-semibold bg-[var(--ink)] text-[var(--on-dark)] hover:bg-[#2B3640]'}
+                      >
+                        {isSelected ? 'Selected' : 'Pay'}
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-semibold text-red-700">{formatRWF(o.balance)}</span>
-                  {o.reason === 'partial' ? (
-                    <Link href="/messages" className="text-xs font-medium text-slate-600 underline underline-offset-2">
-                      Contact landlord
-                    </Link>
-                  ) : (
-                    <Link
-                      href={`/?month=${o.period_month}#pay`}
-                      className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
-                        selectedMonth === o.period_month
-                          ? 'bg-slate-200 text-slate-600'
-                          : 'bg-slate-900 text-white hover:bg-slate-700'
-                      }`}
-                    >
-                      {selectedMonth === o.period_month ? 'Selected' : 'Pay'}
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              )
+            })}
+          </section>
+        </>
       ) : (
-        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
-          <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-          <p className="text-sm font-medium text-green-800">You&apos;re all caught up. No overdue rent.</p>
-        </div>
+        <section className="hero-card p-6 flex items-center gap-4">
+          <CheckCircle2 className="h-8 w-8 text-[var(--metal)] shrink-0" />
+          <div>
+            <p className="text-xl font-semibold">You&apos;re <span className="accent-word">all</span> caught up</p>
+            <p className="text-sm text-white/90 mt-0.5">No overdue rent.</p>
+          </div>
+          <span className="chip chip-success ml-auto">All clear</span>
+        </section>
       )}
 
       <div id="pay" className="space-y-2 scroll-mt-4">
         {isOverdueSelection && (
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <p className="text-slate-600">
-              Paying overdue rent for <span className="font-medium">{formatPeriodMonth(selectedMonth)}</span>
+          <div className="glass rounded-full! flex items-center justify-between gap-3 text-sm px-4 py-2">
+            <p className="text-[var(--muted-2)]">
+              Paying overdue rent for <span className="font-semibold text-[var(--ink)]">{formatPeriodMonth(selectedMonth)}</span>
             </p>
-            <Link href="/" className="text-slate-500 underline underline-offset-2 shrink-0">
+            <Link href="/" className="inline-flex items-center min-h-11 font-semibold text-[var(--ink)] underline underline-offset-2 shrink-0">
               Back to this month
             </Link>
           </div>
@@ -222,66 +240,7 @@ function RentView({
       </div>
 
       {/* Payment history */}
-      <div>
-        <div className="flex items-baseline justify-between gap-3 mb-3">
-          <h2 className="text-base font-semibold text-slate-800">Payment History</h2>
-          {totalPaid > 0 && (
-            <p className="text-xs text-slate-500">Total confirmed: {formatRWF(totalPaid)}</p>
-          )}
-        </div>
-        {history.length === 0 ? (
-          <div className="rounded-xl border border-dashed bg-white px-4 py-8 text-center text-sm text-slate-400">
-            No payments submitted yet
-          </div>
-        ) : (
-          <div className="rounded-xl border bg-white divide-y shadow-sm overflow-hidden">
-            {history.map(p => (
-              <div key={p.id} className="px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800">{formatPeriodMonth(p.period_month)}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Submitted {p.submitted_at ? format(new Date(p.submitted_at), 'MMM d, yyyy') : '—'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-sm font-medium text-slate-700">{formatRWF(p.amount)}</span>
-                    <StatusBadge status={p.status} />
-                  </div>
-                </div>
-                {(p.landlord_notes || p.receipt_file_url) && (
-                  <div className="mt-1.5 space-y-1">
-                    {p.landlord_notes && (
-                      <p className="text-xs text-slate-600 bg-slate-50 rounded-md px-2 py-1">
-                        Landlord: {p.landlord_notes}
-                      </p>
-                    )}
-                    {p.receipt_file_url && (
-                      <a
-                        href={p.receipt_file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800"
-                      >
-                        <ExternalLink className="h-3 w-3" /> View receipt
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <PaymentHistory history={history} totalPaid={totalPaid} />
     </div>
   )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg =
-    status === 'confirmed' ? { label: 'Confirmed', cls: 'bg-green-100 text-green-700' } :
-    status === 'pending_review' ? { label: 'Pending', cls: 'bg-amber-100 text-amber-700' } :
-    status === 'rejected' ? { label: 'Rejected', cls: 'bg-red-100 text-red-700' } :
-    { label: status, cls: 'bg-slate-100 text-slate-500' }
-  return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
 }
