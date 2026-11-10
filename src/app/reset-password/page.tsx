@@ -38,21 +38,21 @@ export default function ResetPasswordPage() {
     }
   }
 
-  const inputCls = 'w-full border rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500'
-  const labelCls = 'block text-sm font-medium text-slate-700'
+  const inputCls = 'glass-input text-sm'
+  const labelCls = 'block text-sm font-semibold text-[var(--ink)]'
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-slate-900 rounded-xl p-3 mb-3">
-            <Building2 className="h-7 w-7 text-white" />
+          <div className="bg-[var(--ink)] rounded-2xl p-3 mb-3 shadow-lg">
+            <Building2 className="h-7 w-7 text-[var(--metal)]" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Set New Password</h1>
-          <p className="text-sm text-slate-500 mt-1">Choose a new password for your account</p>
+          <h1 className="on-photo text-3xl font-semibold tracking-tight">Set New Password</h1>
+          <p className="on-photo text-sm mt-1 opacity-95">Choose a new password for your account</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
+        <div className="glass p-6 space-y-4">
           {error && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {error}
@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-0.5 top-1/2 -translate-y-1/2 h-11 w-11 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-slate-700"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-slate-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-slate-700 transition-colors disabled:opacity-60"
+              className="btn-primary w-full"
             >
               {loading ? 'Saving…' : 'Set New Password'}
             </button>

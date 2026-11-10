@@ -155,20 +155,20 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const inputCls = 'w-full border rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500'
-  const labelCls = 'block text-sm font-medium text-slate-700'
-  const btnPrimary = 'w-full bg-slate-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-slate-700 transition-colors disabled:opacity-60'
-  const btnBack = 'flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 -mt-1'
+  const inputCls = 'glass-input text-sm'
+  const labelCls = 'block text-sm font-semibold text-[var(--ink)]'
+  const btnPrimary = 'btn-primary w-full'
+  const btnBack = "flex items-center gap-1 min-h-11 text-sm font-medium text-slate-600 hover:text-slate-900 -mt-1"
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-slate-900 rounded-xl p-3 mb-3">
-            <Building2 className="h-7 w-7 text-white" />
+          <div className="bg-[var(--ink)] rounded-2xl p-3 mb-3 shadow-lg">
+            <Building2 className="h-7 w-7 text-[var(--metal)]" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Tenant Portal</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="on-photo text-3xl font-semibold tracking-tight">Tenant Portal</h1>
+          <p className="on-photo text-sm mt-1 opacity-95">
             {mode === 'signin' ? 'Sign in to your account'
               : mode === 'register' ? 'Create your account'
               : 'Reset your password'}
@@ -176,15 +176,15 @@ export default function LoginPage() {
         </div>
 
         {(mode === 'signin' || mode === 'register') && (
-          <div className="flex rounded-xl bg-slate-100 p-1 mb-4">
+          <div className="glass rounded-full! flex p-1 mb-4">
             {(['signin', 'register'] as const).map(m => (
               <button
                 key={m}
                 type="button"
                 onClick={() => switchMode(m)}
-                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex-1 min-h-11 rounded-full text-sm font-semibold transition-colors ${
                   mode === m
-                    ? 'bg-white text-slate-900 shadow-sm'
+                    ? "bg-white/85 text-slate-900 shadow-sm"
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -194,7 +194,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
+        <div className="glass p-6 space-y-4">
           {error && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {error}
@@ -212,7 +212,7 @@ export default function LoginPage() {
                 <label className={labelCls}>Password</label>
                 <div className="relative">
                   <input type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} className={inputCls + ' pr-10'} autoComplete="current-password" />
-                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <button type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-0.5 top-1/2 -translate-y-1/2 h-11 w-11 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-slate-700">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -220,7 +220,7 @@ export default function LoginPage() {
               <button type="submit" disabled={loading} className={btnPrimary}>
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
-              <button type="button" onClick={() => switchMode('forgot')} className="w-full text-sm text-slate-500 hover:text-slate-700 text-center transition-colors">
+              <button type="button" onClick={() => switchMode('forgot')} className="w-full min-h-11 text-sm font-medium text-slate-600 hover:text-slate-900 text-center transition-colors">
                 Forgot your password?
               </button>
             </form>
@@ -241,7 +241,7 @@ export default function LoginPage() {
                 <label className={labelCls}>Password * <span className="text-slate-400 font-normal">(min 8 chars)</span></label>
                 <div className="relative">
                   <input type={showPassword ? 'text' : 'password'} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} className={inputCls + ' pr-10'} autoComplete="new-password" />
-                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <button type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-0.5 top-1/2 -translate-y-1/2 h-11 w-11 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-slate-700">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>

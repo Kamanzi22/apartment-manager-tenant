@@ -27,10 +27,10 @@ export default function AuthCallbackPage() {
   }, [])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="flex flex-col items-center gap-4">
-        <div className="bg-slate-900 rounded-xl p-3">
-          <Building2 className="h-7 w-7 text-white" />
+        <div className="bg-[var(--ink)] rounded-2xl p-3 shadow-lg">
+          <Building2 className="h-7 w-7 text-[var(--metal)]" />
         </div>
         <p className="text-slate-500 text-sm">Verifying your link…</p>
       </div>
