@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { NotificationList } from './notification-list'
 import { PushToggle } from '@/components/push-toggle'
+import { EmailToggle } from './email-toggle'
 
 export default async function NotificationsPage() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
@@ -37,18 +38,24 @@ export default async function NotificationsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select('id, type, title, body, link, read_at, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(50)
+  const [{ data: notifications }, { data: me }] = await Promise.all([
+    supabase
+      .from('notifications')
+      .select('id, type, title, body, link, read_at, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    supabase.from('profiles').select('email_notifications').eq('id', user.id).single(),
+  ])
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="on-photo text-3xl font-semibold tracking-tight">Notifications</h1>
-        <PushToggle />
+        <div className="flex flex-wrap gap-2">
+          <EmailToggle initial={me?.email_notifications ?? true} />
+          <PushToggle />
+        </div>
       </div>
       <NotificationList notifications={notifications ?? []} />
     </div>

@@ -3,14 +3,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { emailConfigured, emailLayout, escapeHtml, sendEmail } from '@/lib/email'
 import { sendPush } from '@/lib/push'
-import { kigaliDateString } from '@/lib/rent-utils'
 
-// Daily alerts. Call once a day (Render cron job or Supabase pg_cron, see
-// supabase/README.md) with the header  x-cron-secret: $CRON_SECRET.
-//   Tenants:   rent due in 3 days, rent overdue 1 and 7 days after the due
-//              date, lease ending in 30 days.
-//   Landlord:  receipt waiting more than 3 days, repair open more than 7 days.
-// public.due_alerts() picks the alerts; sent_alerts makes reruns safe.
+// Scheduled alerts. Call it EVERY HOUR (Render cron job or Supabase pg_cron,
+// see supabase/README.md) with the header  x-cron-secret: $CRON_SECRET.
+// public.due_alerts() (migration 13) returns nothing except in the landlord's
+// send hour (Kigali time), and then the rent reminders and warnings from the
+// landlord's settings, plus the landlord's daily late list, over-limit and
+// payment-plan alerts, lease ending, receipts waiting and repairs still open.
+// Every alert is claimed in sent_alerts (key + channel) BEFORE it is sent,
+// so a rerun, or two runs in the same hour, never sends anything twice.
 
 const TENANT_APP = (process.env.TENANT_APP_URL ?? 'https://apartment-manager-tenant.onrender.com').replace(/\/+$/, '')
 const LANDLORD_APP = (process.env.LANDLORD_APP_URL ?? 'https://apartment-manager-landlord.onrender.com').replace(/\/+$/, '')
@@ -29,54 +30,67 @@ function authorized(request: NextRequest): boolean {
 async function run(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const dateParam = request.nextUrl.searchParams.get('date')
-  const today = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : kigaliDateString()
+  // ?at=2027-02-28T09:00:00+02:00 runs the job as if it were that moment (for testing).
+  const atParam = request.nextUrl.searchParams.get('at')
+  const at = atParam && !Number.isNaN(Date.parse(atParam)) ? new Date(atParam).toISOString() : new Date().toISOString()
 
   const admin = await createAdminClient()
-  const { data: alerts, error } = await admin.rpc('due_alerts', { p_today: today })
+  const { data: alerts, error } = await admin.rpc('due_alerts', { p_now: at })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const result = { date: today, due: alerts?.length ?? 0, sent: 0, alreadySent: 0, emailed: 0, pushed: 0, errors: [] as string[] }
-  const emails = new Map<string, string | null>()
+  const result = { at, due: alerts?.length ?? 0, inApp: 0, emailed: 0, pushed: 0, alreadySent: 0, skipped: 0, errors: [] as string[] }
+  const people = new Map<string, { email: string | null; emailOn: boolean }>()
 
-  for (const alert of alerts ?? []) {
-    // Claim the key first: if another run already sent it, skip.
-    const { error: claimError } = await admin.from('sent_alerts').insert({ key: alert.key })
-    if (claimError) {
-      if (claimError.code === '23505') result.alreadySent++
-      else result.errors.push(`${alert.key}: ${claimError.message}`)
-      continue
+  async function person(id: string) {
+    if (!people.has(id)) {
+      const [{ data: u }, { data: p }] = await Promise.all([
+        admin.auth.admin.getUserById(id),
+        admin.from('profiles').select('email_notifications').eq('id', id).maybeSingle(),
+      ])
+      people.set(id, { email: u.user?.email ?? null, emailOn: p?.email_notifications ?? true })
     }
+    return people.get(id)!
+  }
 
-    const { error: notifyError } = await admin.from('notifications').insert({
-      user_id: alert.user_id,
-      type: `alert_${alert.key.split(':')[0]}`,
-      title: alert.title,
-      body: alert.body,
-      link: alert.link,
-    })
-    if (notifyError) {
-      // Release the key so tomorrow's run tries again.
-      await admin.from('sent_alerts').delete().eq('key', alert.key)
-      result.errors.push(`${alert.key}: ${notifyError.message}`)
-      continue
-    }
-    result.sent++
+  for (const a of alerts ?? []) {
+    for (const channel of a.channels) {
+      if (channel !== 'in_app' && channel !== 'email') { result.skipped++; continue } // sms: not built yet
+      const key = `${a.key}:${channel}`
 
-    if (emailConfigured()) {
-      if (!emails.has(alert.user_id)) {
-        const { data } = await admin.auth.admin.getUserById(alert.user_id)
-        emails.set(alert.user_id, data.user?.email ?? null)
+      // Claim first: if this key was already sent, skip it.
+      const { error: claimError } = await admin.from('sent_alerts').insert({
+        key, level: a.level, days_offset: a.days_offset, channel, lease_id: a.lease_id,
+        period_month: a.period_month, user_id: a.user_id, sent_at: at,
+      })
+      if (claimError) {
+        if (claimError.code === '23505') result.alreadySent++
+        else result.errors.push(`${key}: ${claimError.message}`)
+        continue
       }
-      const to = emails.get(alert.user_id)
-      const base = alert.audience === 'landlord' ? LANDLORD_APP : TENANT_APP
-      if (to && await sendEmail(to, alert.title, emailLayout(alert.title, escapeHtml(alert.body), { href: `${base}${alert.link}`, label: 'Open' }))) {
+      const release = () => admin.from('sent_alerts').delete().eq('key', key)
+
+      if (channel === 'in_app') {
+        const { error: notifyError } = await admin.from('notifications').insert({
+          user_id: a.user_id, type: a.notif_type, title: a.title, body: a.body, link: a.link,
+        })
+        if (notifyError) { await release(); result.errors.push(`${key}: ${notifyError.message}`); continue }
+        result.inApp++
+        result.pushed += await sendPush([a.user_id], { title: a.title, body: a.body, url: a.link, tag: a.key }).catch(() => 0)
+        continue
+      }
+
+      // Email
+      const who = await person(a.user_id)
+      if (!emailConfigured() || !who.email || (a.audience === 'tenant' && !who.emailOn)) { result.skipped++; continue }
+      const base = a.audience === 'landlord' ? LANDLORD_APP : TENANT_APP
+      const href = `${base}${a.link.startsWith('/') ? a.link : `/${a.link}`}`
+      if (await sendEmail(who.email, a.title, emailLayout(a.title, escapeHtml(a.body), { href, label: 'Open' }))) {
         result.emailed++
+      } else {
+        await release()
+        result.errors.push(`${key}: email failed`)
       }
     }
-
-    result.pushed += await sendPush([alert.user_id], { title: alert.title, body: alert.body, url: alert.link, tag: alert.key })
-      .catch(() => 0)
   }
 
   return NextResponse.json(result, { status: result.errors.length ? 207 : 200 })

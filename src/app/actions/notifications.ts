@@ -17,3 +17,14 @@ export async function markAllNotificationsRead() {
     .eq('user_id', user.id).is('read_at', null)
   revalidatePath('/notifications')
 }
+
+/** Whether alerts and repair updates are also emailed to this tenant. */
+export async function setEmailNotifications(on: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  const { error } = await supabase.from('profiles').update({ email_notifications: !!on }).eq('id', user.id)
+  if (error) return { error: error.message }
+  revalidatePath('/notifications')
+  return { success: true }
+}

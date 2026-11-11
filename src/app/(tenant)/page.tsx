@@ -10,6 +10,17 @@ import {
   computeLedger, computeUpcoming, fetchLedgers, fetchUpcoming, owedAfterPending, type LedgerRow,
 } from '@/lib/rent-ledger'
 import { formatRWF } from '@/lib/currency'
+import { LIMIT_LABELS, monthLimitState } from '@/lib/rent-alerts'
+
+interface LimitInfo {
+  state: string
+  total_owed: number
+  plan_amount: number | null
+  plan_end: string | null
+  more_time_until: string | null
+  grace_days: number
+  max_unpaid_days: number
+}
 
 interface LeaseView {
   id: string
@@ -60,6 +71,8 @@ export default async function RentPage({
         requestedMonth={month}
         requestedLease={leaseParam}
         currentMonth={currentMonth}
+        limit={null}
+        vacateBy={null}
       />
     )
   }
@@ -86,7 +99,7 @@ export default async function RentPage({
   }
 
   const active = leasesRaw.find(l => l.status === 'active')
-  const [ledgers, upcoming, { data: history }] = await Promise.all([
+  const [ledgers, upcoming, { data: history }, { data: limits }, { data: vacate }] = await Promise.all([
     fetchLedgers(supabase, leasesRaw.map(l => l.id)),
     active ? fetchUpcoming(supabase, active.id, 6) : Promise.resolve([] as LedgerRow[]),
     // Full history across all of this tenant's leases (RLS limits rows to the tenant).
@@ -97,7 +110,12 @@ export default async function RentPage({
       .order('period_month', { ascending: false })
       .order('submitted_at', { ascending: false })
       .limit(500),
+    // Only this tenant's own leases come back.
+    supabase.rpc('rent_limit_status'),
+    supabase.from('vacate_notices').select('move_out_date').eq('status', 'issued')
+      .order('issued_at', { ascending: false }).limit(1).maybeSingle(),
   ])
+  const limit = (limits ?? []).find(l => l.lease_id === active?.id) ?? (limits ?? []).find(l => l.state === 'over_limit') ?? null
 
   const leases: LeaseView[] = leasesRaw.map(l => ({
     id: l.id,
@@ -117,6 +135,8 @@ export default async function RentPage({
       requestedMonth={month}
       requestedLease={leaseParam}
       currentMonth={currentMonth}
+      limit={limit ? { ...limit, total_owed: Number(limit.total_owed) } : null}
+      vacateBy={vacate?.move_out_date ?? null}
     />
   )
 }
@@ -132,14 +152,18 @@ function payHref(o: { lease: LeaseView; row: LedgerRow }) {
 }
 
 function RentView({
-  leases, history, requestedMonth, requestedLease, currentMonth,
+  leases, history, requestedMonth, requestedLease, currentMonth, limit, vacateBy,
 }: {
   leases: LeaseView[]
   history: HistoryPayment[]
   requestedMonth: string | undefined
   requestedLease: string | undefined
   currentMonth: string
+  limit: LimitInfo | null
+  vacateBy: string | null
 }) {
+  const today = kigaliDateString()
+  const limitSettings = { grace_days: limit?.grace_days ?? 5, max_unpaid_days: limit?.max_unpaid_days ?? 30 }
   const active = leases.find(l => l.active) ?? null
   const previous = leases.filter(l => !l.active)
 
@@ -184,6 +208,39 @@ function RentView({
             : 'Former tenant · your history and balance'}
         </p>
       </div>
+
+      {vacateBy && (
+        <section role="alert" className="rounded-[24px] bg-red-600 text-white p-5">
+          <p className="text-base font-semibold">Notice to vacate</p>
+          <p className="text-sm mt-1">
+            You must move out by <strong>{format(parseISO(vacateBy), 'EEEE d MMMM yyyy')}</strong>.
+            You can still pay what you owe here, and message your landlord if you want to talk.
+          </p>
+        </section>
+      )}
+
+      {limit && limit.state === 'over_limit' && (
+        <section role="alert" className="glass p-4 border-2 border-red-300">
+          <p className="text-sm font-semibold text-red-700">Over the unpaid rent limit</p>
+          <p className="text-sm text-[var(--muted-2)] mt-0.5">
+            You owe {formatRWF(limit.total_owed)}. Please pay as soon as you can, or message your landlord to agree a payment plan.
+          </p>
+        </section>
+      )}
+      {limit && limit.state === 'plan' && limit.plan_amount && (
+        <section className="glass p-4">
+          <p className="text-sm font-semibold">Payment plan</p>
+          <p className="text-sm text-[var(--muted-2)] mt-0.5">
+            {formatRWF(limit.plan_amount)} a month towards what you owe{limit.plan_end ? `, until ${format(parseISO(limit.plan_end), 'd MMMM yyyy')}` : ''}.
+            Reminders are paused while the plan is kept.
+          </p>
+        </section>
+      )}
+      {limit && limit.state === 'more_time' && limit.more_time_until && (
+        <section className="glass p-4 text-sm text-[var(--muted-2)]">
+          Your landlord has given you until <strong>{format(parseISO(limit.more_time_until), 'd MMMM yyyy')}</strong> to pay.
+        </section>
+      )}
 
       {!active && (
         <section className="glass p-4 flex items-start gap-3" aria-label="Former tenant">
@@ -238,8 +295,14 @@ function RentView({
                   className="glass-row flex items-center justify-between gap-3 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">
+                    <p className="text-sm font-semibold flex items-center gap-2 flex-wrap">
                       {formatPeriodMonth(o.row.period_month)}
+                      {(() => {
+                        const st = monthLimitState(o.row, today, limitSettings)
+                        return st === 'due' || st === 'late' || st === 'over_limit'
+                          ? <span className={`chip ${st === 'due' ? 'chip-warning' : 'chip-danger'}`}>{LIMIT_LABELS[st]}</span>
+                          : null
+                      })()}
                       {!o.lease.active && <span className="text-xs font-normal text-[var(--muted)]"> · {o.lease.unitLabel} (previous)</span>}
                     </p>
                     <p className="text-xs text-[var(--muted)] mt-0.5">
