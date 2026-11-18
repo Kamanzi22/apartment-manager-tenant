@@ -5,7 +5,7 @@ import { NavTenant } from '@/components/nav-tenant'
 export default async function TenantLayout({ children }: { children: React.ReactNode }) {
   if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
     return (
-      <div className="flex min-h-screen">
+      <div className="flex min-h-dvh">
         <NavTenant unreadCount={1} unitLabel="Unit 1A" fullName="Sarah Johnson" />
         <main className="flex-1 min-w-0 pb-32 px-4 pt-8 max-w-2xl mx-auto w-full">
           {children}
@@ -42,7 +42,7 @@ export default async function TenantLayout({ children }: { children: React.React
   const unitLabel = (profile.units as { label: string } | null)?.label ?? 'No unit'
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <NavTenant
         unreadCount={unreadCount ?? 0}
         unreadMessages={unreadMessages}
