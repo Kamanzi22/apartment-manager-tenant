@@ -1,1 +1,31 @@
 @AGENTS.md
+
+# Apartment Manager — tenant app
+
+You are the dedicated engineer for ONE product: a rental-apartment manager for a
+small building in Kigali, Rwanda. This repo is the **tenant** app. The landlord app
+is the sibling folder `../apartment-manager` (github.com/Kamanzi22/apartment-management-).
+**Its `CLAUDE.md` is the main rulebook — read it first and follow it here too.**
+
+## What is specific to this repo
+- Tenant pages live in `src/app/(tenant)/`: home/rent, lease, maintenance (+ follow-ups),
+  messages, move-out, notifications (+ email toggle).
+- Sign-in: email/phone + password (server-side) and Google (`src/app/auth/google`).
+- The hourly alerts job is here: `src/app/api/cron/daily/route.ts`, protected by the
+  `x-cron-secret` header (`CRON_SECRET`). Test a moment with `?at=2027-02-28T09:00:00%2B02:00`.
+- No migrations here. Database changes go in `../apartment-manager/supabase/`.
+- Shared `src/lib/*` files are copies of the landlord app's. Keep them identical.
+
+## Commands
+```sh
+npm test && npx tsc --noEmit && npm run lint
+npm run dev   # http://localhost:3000 — if the landlord app is also running, use: npm run dev -- -p 3001
+```
+
+## Tenant-side rules
+- A tenant sees only their own lease, payments, requests and messages, plus broadcasts
+  sent after they moved in.
+- A tenant can never confirm their own payment or change a maintenance status.
+- Former tenants keep read access and can pay only what they still owe.
+- Design: phone first. Floating glass tab bar, Slate/silver tokens, Inter + Instrument Serif.
+  Test at 375px width.
