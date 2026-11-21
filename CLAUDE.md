@@ -7,6 +7,10 @@ small building in Kigali, Rwanda. This repo is the **tenant** app. The landlord 
 is the sibling folder `../apartment-manager` (github.com/Kamanzi22/apartment-management-).
 **Its `CLAUDE.md` is the main rulebook — read it first and follow it here too.**
 
+The project lives in `C:\dev` on a **Windows** laptop (the Lenovo only, Git Bash, **8 GB RAM**:
+ask before any dev server, build, Expo or emulator; one heavy command at a time).
+iPhone builds go through **EAS cloud builds**.
+
 ## What is specific to this repo
 - Tenant pages live in `src/app/(tenant)/`: home/rent, lease, maintenance (+ follow-ups),
   messages, move-out, notifications (+ email toggle).
