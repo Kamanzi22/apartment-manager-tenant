@@ -27,6 +27,7 @@ export default function LoginPage() {
     const code = new URLSearchParams(window.location.search).get('code')
     const params = new URLSearchParams(window.location.search)
     const linkError = params.get('error')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- window.location is only readable after hydration; this shows the error from the sign-in link once
     if (linkError === 'not_tenant') { setError('This account is not a tenant account. Use the manager app to sign in.'); return }
     if (linkError === 'google_failed') { setError('Google sign-in did not finish. Please try again.'); return }
     if (linkError) { setError('This reset link is invalid or has expired. Please request a new one.'); return }
@@ -264,7 +265,7 @@ export default function LoginPage() {
                   <div className="space-y-1.5">
                     <label className={labelCls}>Your email address</label>
                     <input type="email" required value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} className={inputCls} placeholder="you@example.com" autoComplete="email" />
-                    <p className="text-xs text-slate-400">We'll email you a link to reset your password.</p>
+                    <p className="text-xs text-slate-400">We&apos;ll email you a link to reset your password.</p>
                   </div>
                   <button type="submit" disabled={loading} className={btnPrimary}>
                     {loading ? 'Sending…' : 'Send Reset Link'}
