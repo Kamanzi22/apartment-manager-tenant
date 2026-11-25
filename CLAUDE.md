@@ -33,3 +33,8 @@ npm run dev   # http://localhost:3000 — if the landlord app is also running, u
 - Former tenants keep read access and can pay only what they still owe.
 - Design: phone first. Floating glass tab bar, Slate/silver tokens, Inter + Instrument Serif.
   Test at 375px width.
+
+## Handoff (applies to every agent)
+RULE: At the start of every session read C:\dev\HANDOFF.md first. Every agent updates HANDOFF.md (DONE, IN PROGRESS with the exact next step, REMAINING, TEST STATUS, LAST UPDATED) after every finished task, after every commit, at least every 30 minutes while working, and IMMEDIATELY when usage is running low or a limit message appears. Keep it short, accurate and secret-free. Never stop work without updating it first.
+
+USAGE LOW RULE: on any usage warning or limit message, first write your exact next step into HANDOFF.md, commit your work to your feature branch, then stop.
